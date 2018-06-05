@@ -1,8 +1,6 @@
 
 using Distances
 using Clustering
-include("csa.jl")
-#include("SegmentationBenchmark.jl")
 export
     edge_weight,
     boundary_map,

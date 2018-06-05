@@ -1,9 +1,15 @@
 # Supervised methods
+## Introduction
 In order to use the supervised evaluation method you have to have a ground truth. 
 ```julia
 function evaluate(cfg, cl::Matrix{T}, gt::Matrix{T})  where T<:Integer
 ```
 
+## Reference
+```@autodocs
+Modules = [ImageSegmentationEvaluation]
+Pages   = ["supervised.jl"]
+```
 ## Example
 ```@example supervised
 using TestImages, ImageSegmentation, Plots, Colors,  Images, ImageSegmentationEvaluation
