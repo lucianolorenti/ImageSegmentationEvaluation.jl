@@ -1,6 +1,10 @@
 # Supervised methods
 ## Introduction
 In order to use the supervised evaluation method you have to have a ground truth. 
+
+I can not recommend enough the [PhD thesis of Jordi Pont-Tuset: Image Segmentation Evaluation and Its Application to Object 
+Detection](http://jponttuset.cat/publications/)
+
 ```julia
 function evaluate(cfg, cl::Matrix{T}, gt::Matrix{T})  where T<:Integer
 ```
@@ -14,6 +18,7 @@ Pages   = ["supervised.jl"]
 ```@example supervised
 using TestImages, ImageSegmentation, Plots, Colors,  Images, ImageSegmentationEvaluation
 using Plots
+pyplot()
 function get_random_color(seed)
     srand(seed)
     rand(RGB{N0f8})
@@ -33,13 +38,6 @@ savefig("images.png"); nothing # hide
 ![](images.png)
 
 
-- Segmentation Covering
-- Variation of Information
-- Rand index
-- F-measure for regions
-- Precision-recall for objects and parts
-- Boundary displacement error
-- F-measure for boundaries
 
 ```@example supervised
 labels_1 = labels_map(segments1)

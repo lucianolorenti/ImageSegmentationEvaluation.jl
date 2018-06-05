@@ -1,6 +1,7 @@
 
 using Distances
 using Clustering
+using MatrixNetworks
 export
     edge_weight,
     boundary_map,
@@ -16,7 +17,14 @@ export
     thinning
 using MLBase
 
+"""
+```
+struct FBoundary
+```
 
+# Members
+- `dmax::Float64`
+"""
 struct FBoundary
     dmax::Float64
 end
@@ -25,10 +33,7 @@ end
 ```
 function boundary_map(seg::Matrix{T}) where T<:Integer
 ```
-
-% From a segmentation, compute a binary boundary map with 1 pixel wide
-% boundaries.  The boundary pixels are offset by 1/2 pixel towards the
-% origin from the actual segment boundary.
+From a segmentation, compute a binary boundary map with 1 pixel wide  boundaries.  The boundary pixels are offset by 1/2 pixel towards the origin from the actual segment boundary.
 """
 function boundary_map(seg::Matrix{T}) where T<:Integer
     (h,w) = size(seg)
@@ -47,7 +52,6 @@ function boundary_map(seg::Matrix{T}) where T<:Integer
     b[end,end] = 0;
     return b
 end
-using MatrixNetworks
 function pixel_mapping(cl::AbstractMatrix, gt::AbstractMatrix, dmax)
     local pixToIdxCL = Dict{Tuple{Integer,Integer},Integer}()
     local pixToIdxGT = Dict{Tuple{Integer,Integer},Integer}()
@@ -217,18 +221,30 @@ function evaluate(d, cl::Matrix{T}, gt::Matrix{T}) where T<:Integer
     return sum_tot / N
     
 end
+"""
+Precision
+"""
 type Precision end
 function edge_weight(d::Precision, cl::BitArray{2}, gt::BitArray{2})
     return precision(roc(vec(gt),vec(cl)))
 end
+"""
+FMeasure
+"""
 type FMeasure end
 function edge_weight(d::FMeasure, cl::BitArray{2}, gt::BitArray{2})
     return f1score(roc(vec(gt),vec(cl)))
 end
+"""
+Segmentation Covering
+"""
 type SegmentationCovering end
 function edge_weight(d::SegmentationCovering, cl::BitArray{2}, gt::BitArray{2})
     return 1-jaccard(Integer.(vec(gt)),Integer.(vec(cl)))
 end
+"""
+Variation of Information
+"""
 type VariationOfInformation
     normalize::Bool
 end
@@ -272,6 +288,9 @@ function evaluate(d::VariationOfInformation, cl::Matrix{T}, gt::Matrix{T}) where
         return voi
     end
 end
+"""
+RandIndex
+"""
 struct RandIndex end
 function evaluate(d::RandIndex, c1::Matrix{T}, gt::Matrix{T}) where T<:Integer
     local n = prod(size(c1))
@@ -279,6 +298,9 @@ function evaluate(d::RandIndex, c1::Matrix{T}, gt::Matrix{T}) where T<:Integer
     (a,b,c,d) = randindex(vec(c1), vec(gt))
     return b
 end
+"""
+FMeasure Regions
+"""
 struct FMeasureRegions end
 
 doc""""
@@ -492,6 +514,7 @@ end
 
 
 """
+Boundary Displacement Error
 Authors: John Wright, and Allen Y. Yang
 Contact: Allen Y. Yang <yang@eecs.berkeley.edu>
 """
