@@ -84,12 +84,101 @@ function evaluate(c::Zeboudj, image::Matrix{T1}, segments::Matrix{T}) where T<:I
     end
     return (1/(prod(size(image)))) *sum(segments_sizes.*C)
 end
-"""
+doc"""
 An Entropy-based Objective Evaluation Method for Image Segmentation
 Hui Zhang*, Jason E. Fritts and Sally A. Goldman
+
+Given an image I of ($n \times m$) , $S_I = nm$
+
+$H_v(R_j) = - \sum\limits_{m \in V^{(v)}_j} \dfrac{L_j(m)}{S_j) log(\dfrac{L_j(m)}{S_j)
+)$
+
+$ H_l(I) = - \sum\limits_{j=1}^N \dfrac{S_j}{S_I} log(\dfrac{S_j}{S_I}) $
 """
 type ValuesEntropy
 end
+function components(a::Vector{T}) where T<:Color
+    return (comp1.(a), comp2.(a), comp3.(a))
+end
+function components(a::Vector{T}) where T<:TransparentColor    
+    return (comp1.(a), comp2.(a), comp3.(a), alpha.(a))
+end
+function components(a::Vector{T}) where T<:Number
+    return a
+end
 function evaluate(c::ValuesEntropy, image::Matrix, segments::Matrix{T}) where T<:Integer
+    Hr = 0
+    Hl = 0 
+    Si = prod(size(image))
+    for j in unique(segments)
+        segment = segments.==j
+        Sj = count(segment)
+        comps = components(image[segment])
+        Hl += (Sj/Si)*(log(Sj/Si))
+        for k=1:length(comps)
+            Ej = 0
+            for val in unique(comps[k])
+                Lj = count(comps[k].==val)
+                Ej += (Lj / Sj)*(log(Lj / Sj))
+            end
+        end
+        Hr += (Sj/Si)*(-Ej)
+    end
+    Hl = -Hl
+    return Hr + Hl
+end
+"""
+Multiresolution Color Image Segmentation
+Jianqing Liu and Yee-Hong Yang, Senior Member, IEEE
+
+$F(I) = \sqrt{R} \times \sum\limits_{i=1}^R \dfrac{e_i^2}{\sqrt{A_i}}$
+where $I$ is the image to be segmented, R, the number of regions in the segmented image, $A_i$, the area, or the number of pixels of the ith region $i$, and $e_i$  the color error of region $i$. e is defined as the sum of the Euclidean distance of the color vectors between the original image and the segmented image of each pixel in the region. 
+"""
+struct LiuYangF
+end
+
+function scale_factor(c::LiuYangF, image::Matrix, segments::Matrix)
+    return maximum(segments)
+end
+function evaluate(c::LiuYangF, image::Matrix, segments::Matrix{T}) where T<:Integer
+    labels = unique(segments)
+    out = 0
+    for i in labels
+        pixels_in_segment = segments.==i
+        A_i = count(pixels_in_segment)
+        e_i = sum((norm.(mean(image[pixels_in_segment]) - image[pixels_in_segment])).^2)
+        out += e_i/sqrt(A_i)
+    end
+    return (1/(prod(size(image))))*sqrt(scale_factor(c, image, segments))*out
+end
+
+"""
+Quantitative evaluation of color image segmentation results 1
+M. Borsotti a, P. Campadelli a,2, R. Schettini b,
+"""
+
+struct Fprime
+end
+
+function scale_factor(c::FPrime, image::Matrix, segments::Matrix)
+    segment_sizes = [count(segments.==i) for i in labels]
+    scale = 0
+    for A in unique(segments_sizes)
+        R_A = count(segments_sizes.==seg_size)
+        scale = scale + R_A^(1 + (1/A))
+    end
+    return scale
+end
+function evaluate(c::FPrime, image::Matrix, segments::Matrix{T}) where T<:Integer
+    labels = unique(segments)
     
+    out = 0
+    for i in labels
+        pixels_in_segment = segments.==i
+        A_i = count(pixels_in_segment)
+        e_i = sum((norm.(mean(image[pixels_in_segment]) - image[pixels_in_segment])).^2)
+        out += e_i/sqrt(A_i)
+    end
+    return (1/(prod(size(image))))*scale*out
+end
 end
