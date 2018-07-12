@@ -1,3 +1,4 @@
+using Colors
 # On Selecting the Best Unsupervised Evaluation Techniques for Image Segmentation
 """
 The use of visible color difference in the quantitative evaluation of color image segmentation,
@@ -5,7 +6,7 @@ The use of visible color difference in the quantitative evaluation of color imag
 struct ECW
     threshold::Float64
 end
-function evaluate(c::ECW, image::Matrix{LAB}, segments::Matrix{T}) where T<:Integer
+function evaluate(c::ECW, image::Matrix{Lab}, segments::Matrix{T}) where T<:Integer
     local segments_mean = [i->segment_mean(segments,i) for i in unique(segments)]
     local R = length(segments_mean)
     local mean_segments = map(i->segments_mean[i],segments)
@@ -27,7 +28,7 @@ function evaluate(c::ECW, image::Matrix{LAB}, segments::Matrix{T}) where T<:Inte
 end
 
 function evaluate(c::ECW, image::Matrix{RGB}, segments::Matrix{T}) where T<:Integer
-    return evaluate(c, LAB.(image), segments)
+    return evaluate(c, Lab.(image), segments)
 end
 
 
@@ -126,7 +127,7 @@ function evaluate(c::ValuesEntropy, image::Matrix, segments::Matrix{T}) where T<
     Hl = -Hl
     return Hr + Hl
 end
-"""
+doc"""
 Multiresolution Color Image Segmentation
 Jianqing Liu and Yee-Hong Yang, Senior Member, IEEE
 
@@ -138,7 +139,7 @@ end
 function scale_factor(c::LiuYangF, image::Matrix, segments::Matrix)
     return sqrt(maximum(segments))
 end
-"""
+doc"""
 ´´´julia
 function color_error_sum(image::Matrix, segments::Matrix{Integer)
 ´´´
@@ -166,7 +167,7 @@ end
 Quantitative evaluation of color image segmentation results 
 M. Borsotti a, P. Campadelli a,2, R. Schettini b,
 """
-struct Fprime
+struct FPrime
 end
 
 function scale_factor(c::FPrime, image::Matrix, segments::Matrix)
@@ -174,7 +175,7 @@ function scale_factor(c::FPrime, image::Matrix, segments::Matrix)
     scale = 0
     for A in unique(segments_sizes)
         R_A = count(segments_sizes.==seg_size)
-        scale = scale + R_A^(1 + (1/A))
+        scale += R_A^(1 + (1/A))
     end
     return (1/prod(size(image))) *scale
 end
@@ -182,7 +183,7 @@ function evaluate(c::FPrime, image::Matrix, segments::Matrix{T}) where T<:Intege
     return scale_factor(c, image, segments)*color_error_sum(image, segments)
 end
 
-"""
+doc"""
 Quantitative evaluation of color image segmentation results
 M. Borsotti a, P. Campadelli a,2, R. Schettini b,
 
@@ -224,7 +225,8 @@ function mean_value(img::Matrix{T}, pos, w) where T
     end
     return sum / prod(size(range))
 end
-function evaluate(c::AA, image::Matrix, segments::Matrix{Integer})
+
+function evaluate(c::ErdemMethod, image::Matrix, segments::Matrix{Integer})
     (h,w) = size(image)
     for i in unique(segments)
         segment = segments.==i
@@ -238,5 +240,4 @@ function evaluate(c::AA, image::Matrix, segments::Matrix{Integer})
         sum += delta_color
     end
     return 1 - (sum/length(inside))
-end
 end

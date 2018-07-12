@@ -529,7 +529,7 @@ function evaluate(cfg::BoundaryDisplacementError, cl::Matrix{T}, gt::Matrix{T}) 
     (gradX, gradY)=imgradients(cl, KernelFactors.ando3)
     (boundaryPixelY, boundaryPixelX) =ind2sub(size(cl),find((abs.(gradX)+abs.(gradY)).!=0)) 
     local boundary1 = (abs.(gradX) .+ abs.(gradY)) .> 0;
-
+    
     
     (gradX, gradY)=imgradients(gt, KernelFactors.ando3)
     (boundaryPixelY, boundaryPixelX) =ind2sub(size(cl),find((abs.(gradX)+abs.(gradY)).!=0)) 
@@ -541,9 +541,11 @@ function evaluate(cfg::BoundaryDisplacementError, cl::Matrix{T}, gt::Matrix{T}) 
     local D2 = distance_transform(feature_transform(boundary2));
 
     # compute the distance of the pixels in boundary1 to the nearest pixel in% boundary2:
+    println(boundary1)
     local dist_12 = sum(boundary1 .* D2 );
     local dist_21 = sum(boundary2 .* D1 );
-
+    println(dist_12)
+    println(dist_21)
     local avgError_12 = dist_12 / sum(boundary1);
     local avgError_21 = dist_21 / sum(boundary2);
     return (avgError_12 + avgError_21) / 2;

@@ -1,5 +1,6 @@
 module ImageSegmentationEvaluation
-
+export
+    evaluate
 # package code goes here
 include("utils.jl")
 include("supervised.jl")
