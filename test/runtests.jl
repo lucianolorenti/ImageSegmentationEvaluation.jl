@@ -4,7 +4,31 @@ using ImageSegmentationEvaluation
 else
     using Test
 end
-
+@testset "Boundary extraction" begin
+    img = [0 0 0 0 0 0 0 0 0;
+           0 0 0 0 0 0 0 0 0;
+           0 0 1 1 1 1 1 0 0;
+           0 0 1 1 1 1 1 0 0;
+           0 0 1 1 1 1 1 0 0;
+           0 0 1 1 1 1 1 0 0;
+           0 0 1 1 1 1 1 0 0;
+           0 0 1 1 1 1 1 0 0;
+           0 0 0 0 0 0 0 0 0;
+           0 0 0 0 0 0 0 0 0]
+    
+    expected = [0 0 0 0 0 0 0 0 0;
+                0 0 1 1 1 1 1 0 0;
+                0 1 1 1 1 1 1 1 0;
+                0 1 1 0 0 0 1 1 0;
+                0 1 1 0 0 0 1 1 0;
+                0 1 1 0 0 0 1 1 0;
+                0 1 1 0 0 0 1 1 0;
+                0 1 1 1 1 1 1 1 0;
+                0 0 1 1 1 1 1 0 0;
+                0 0 0 0 0 0 0 0 0]
+    @test expected == boundary_map(BoundaryGradient(), img)
+    
+end
 @testset "Boundary Displacement Error" begin
     function distances(B1, B2)
         d=[]

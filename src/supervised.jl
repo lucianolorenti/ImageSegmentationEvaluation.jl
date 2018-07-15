@@ -29,29 +29,6 @@ struct FBoundary
     dmax::Float64
 end
 
-""""
-```
-function boundary_map(seg::Matrix{T}) where T<:Integer
-```
-From a segmentation, compute a binary boundary map with 1 pixel wide  boundaries.  The boundary pixels are offset by 1/2 pixel towards the origin from the actual segment boundary.
-"""
-function boundary_map(seg::Matrix{T}) where T<:Integer
-    (h,w) = size(seg)
-
-    local ee = zeros(size(seg));
-    local s = zeros(size(seg));
-    local se = zeros(size(seg));
-
-    ee[:,1:end-1] = seg[ :,2:end];
-    s[1:end-1,:] = seg[2:end,:];
-    se[1:end-1,1:end-1] = seg[2:end,2:end];
-
-    local b = (seg.!=ee) .| (seg.!=s) .| (seg.!=se);
-    b[end,:] = seg[end,:].!=ee[end,:];
-    b[:,end] = seg[:,end].!=s[:,end];
-    b[end,end] = 0;
-    return b
-end
 function pixel_mapping(cl::AbstractMatrix, gt::AbstractMatrix, dmax)
     local pixToIdxCL = Dict{Tuple{Integer,Integer},Integer}()
     local pixToIdxGT = Dict{Tuple{Integer,Integer},Integer}()
@@ -512,7 +489,6 @@ function evaluate(c::PRObjectsAndParts, assignments_seg::Matrix{T}, assignments_
 end
 
 
-
 """
 Boundary Displacement Error
 Authors: John Wright, and Allen Y. Yang
@@ -526,28 +502,17 @@ function evaluate(cfg::BoundaryDisplacementError, cl::Matrix{T}, gt::Matrix{T}) 
 
     
     # Generate boundary maps
-    (gradX, gradY)=imgradients(cl, KernelFactors.ando3)
-    (boundaryPixelY, boundaryPixelX) =ind2sub(size(cl),find((abs.(gradX)+abs.(gradY)).!=0)) 
-    local boundary1 = (abs.(gradX) .+ abs.(gradY)) .> 0;
+    boundary1 = boundary_map(BoundaryGradient(), cl)
+    boundary2 = boundary_map(BoundaryGradient(), gt)
     
-    
-    (gradX, gradY)=imgradients(gt, KernelFactors.ando3)
-    (boundaryPixelY, boundaryPixelX) =ind2sub(size(cl),find((abs.(gradX)+abs.(gradY)).!=0)) 
-    local boundary2 = (abs.(gradX) .+ abs.(gradY)) .> 0;
-
-
     # boundary1 and boundary2 are now binary boundary masks. compute their distance transforms:
-    local D1 = distance_transform(feature_transform(boundary1));
-    local D2 = distance_transform(feature_transform(boundary2));
+    D1 = distance_transform(feature_transform(boundary1));
+    D2 = distance_transform(feature_transform(boundary2));
 
     # compute the distance of the pixels in boundary1 to the nearest pixel in% boundary2:
-    println(boundary1)
-    local dist_12 = sum(boundary1 .* D2 );
-    local dist_21 = sum(boundary2 .* D1 );
-    println(dist_12)
-    println(dist_21)
+    dist_12 = sum(boundary1 .* D2 );
+    dist_21 = sum(boundary2 .* D1 );
     local avgError_12 = dist_12 / sum(boundary1);
     local avgError_21 = dist_21 / sum(boundary2);
     return (avgError_12 + avgError_21) / 2;
-    
 end
