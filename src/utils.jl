@@ -32,7 +32,19 @@ struct BoundaryGradient
 end
 
 function boundary_map(b::BoundaryGradient, img::Matrix)
-    (gradY, gradX) = imgradients(img, KernelFactors.ando3 ) 
+    (nr, nc) = size(img)
+    gradX = zeros(size(img))
+    for c = 2:nc-1
+        gradX[:,c] = 0.5*(img[:,c+1] - img[:,c-1]);
+    end
+    gradX[:,1] = img[:,2] - img[:,1];
+    gradX[:,nc] = img[:,nc] - img[:,nc-1];
+    gradY = zeros(size(img))
+    for r = 2:nr-1
+        gradY[r,:] = 0.5*(img[r+1,:] - img[r-1,:]);
+    end
+    gradY[1,:] = img[2,:] - img[1,:];
+    gradY[nr,:] = img[nr,:] - img[nr-1,:];
     return (abs.(gradX) .+ abs.(gradY)) .> 0;
 end
 
@@ -43,7 +55,8 @@ end
 ```
 function boundary_map(seg::Matrix{T}) where T<:Integer
 ```
-From a segmentation, compute a binary boundary map with 1 pixel wide  boundaries.  The boundary pixels are offset by 1/2 pixel towards the origin from the actual segment boundary.
+From a segmentation, compute a binary boundary map with 1 pixel wide  boundaries. 
+The boundary pixels are offset by 1/2 pixel towards the origin from the actual segment boundary.
 """
 function boundary_map(cfg::BoundaryShift, seg::Matrix{T}) where T<:Integer
     (h,w) = size(seg)

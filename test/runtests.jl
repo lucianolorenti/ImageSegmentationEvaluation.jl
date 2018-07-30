@@ -28,6 +28,21 @@ end
                 0 0 0 0 0 0 0 0 0]
     @test expected == boundary_map(BoundaryGradient(), img)
     
+    expected = [ 0  0  0  0  0  0  0  0  0;
+                 0  1  1  1  1  1  1  0  0;
+                 0  1  0  0  0  0  1  0  0;
+                 0  1  0  0  0  0  1  0  0;
+                 0  1  0  0  0  0  1  0  0;
+                 0  1  0  0  0  0  1  0  0;
+                 0  1  0  0  0  0  1  0  0;
+                 0  1  1  1  1  1  1  0  0;
+                 0  0  0  0  0  0  0  0  0;
+                 0  0  0  0  0  0  0  0  0]
+    @test expected == boundary_map(BoundaryShift(), img)
+    display(boundary_map(BoundaryMooreTracing(), img)  )
+    @test expected == boundary_map(BoundaryMooreTracing(), img) 
+    
+    
 end
 @testset "Boundary Displacement Error" begin
     function distances(B1, B2)
@@ -39,16 +54,23 @@ end
         return d
     end
     img = [0 0 0 0 0;
-           0 1 1 1 1;
-           0 1 1 1 1;
-           0 1 1 1 1;
+           0 1 1 1 0;
+           0 1 1 1 0;
+           0 1 1 1 0;
            0 0 0 0 0]
     gt = [0 0 0 0 0;
-          0 0 1 1 1;
-          0 0 1 1 1;
-          0 0 1 1 1;
+          0 0 1 1 0;
+          0 0 1 1 0;
+          0 0 1 1 0;
           0 0 0 0 0]
 
+    img_boundary =  [0 1 1 1 0;
+                     1 1 1 1 1;
+                     1 1 0 1 1;
+                     1 1 1 1 1;
+                     0 1 1 1 0]
+    gt_boundary = []
+    display(Integer.(boundary_map(BoundaryGradient(), gt)))
     B1 = ind2sub(size(img),find(img.==1))
     B1 = hcat(B1...)
     B2 = ind2sub(size(gt), find(gt.==1))

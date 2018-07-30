@@ -1,6 +1,10 @@
 module ImageSegmentationEvaluation
 export
-    evaluate
+    evaluate,
+    
+    BoundaryGradient,
+    BoundaryShift,
+    BoundaryMooreTracing 
 # package code goes here
 include("utils.jl")
 include("supervised.jl")
