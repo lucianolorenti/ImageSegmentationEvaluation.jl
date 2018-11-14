@@ -30,24 +30,24 @@ struct FBoundary
 end
 
 function pixel_mapping(cl::AbstractMatrix, gt::AbstractMatrix, dmax)
-    local pixToIdxCL = Dict{Tuple{Integer,Integer},Integer}()
-    local pixToIdxGT = Dict{Tuple{Integer,Integer},Integer}()
-    local idxToPixCL = Vector{Tuple{Integer,Integer}}()
-    local idxToPixGT = Vector{Tuple{Integer,Integer}}()
-    local ee         = Vector() 
-    local matchableGT = falses(size(cl))
-    local matchableCL = falses(size(cl))
-    local nCL = 0
-    local nGT = 0
-    local r = round(Integer,ceil(dmax))
+     pixToIdxCL = Dict{Tuple{Integer,Integer},Integer}()
+     pixToIdxGT = Dict{Tuple{Integer,Integer},Integer}()
+     idxToPixCL = Vector{Tuple{Integer,Integer}}()
+     idxToPixGT = Vector{Tuple{Integer,Integer}}()
+     ee         = Vector() 
+     matchableGT = falses(size(cl))
+     matchableCL = falses(size(cl))
+     nCL = 0
+     nGT = 0
+     r = round(Integer,ceil(dmax))
     for j in find(cl)
         (rc,cc) = ind2sub(size(cl),j)
-        local wInit   = CartesianIndex(max.((rc,cc).-(r,r),(1,1)))        
-        local wEnd    = CartesianIndex(min.((rc,cc).+(r,r),size(cl)))
+         wInit   = CartesianIndex(max.((rc,cc).-(r,r),(1,1)))        
+         wEnd    = CartesianIndex(min.((rc,cc).+(r,r),size(cl)))
         for CI in CartesianRange( wInit, wEnd)
             if gt[CI]
-                local k =  sub2ind(size(gt), CI[1],CI[2])
-                local dist = sqrt((CI[1]-rc)^2 +  (CI[2]-cc)^2)
+                 k =  sub2ind(size(gt), CI[1],CI[2])
+                 dist = sqrt((CI[1]-rc)^2 +  (CI[2]-cc)^2)
                 if dist <= dmax
                     matchableCL[rc,cc] = true
                     matchableGT[CI] = true
@@ -72,20 +72,20 @@ function pixel_mapping(cl::AbstractMatrix, gt::AbstractMatrix, dmax)
 end
 function evaluate(f::FBoundary, cl_seg::Matrix{T}, gt_seg::Matrix{T}) where T<:Integer
 
-    local cl = thinning(boundary_map(cl_seg))
-    local gt = thinning(boundary_map(gt_seg))
-    local scale_cost =  sqrt( size(cl,1)^2 + size(cl,2)^2)
-    local dmax = f.dmax * scale_cost
-    local noutliers = 6
-    local cl_detected = find(cl)
-    local gt_detected = find(gt)
-    local outlier_weight =-100*f.dmax*scale_cost
+     cl = thinning(boundary_map(cl_seg))
+     gt = thinning(boundary_map(gt_seg))
+     scale_cost =  sqrt( size(cl,1)^2 + size(cl,2)^2)
+     dmax = f.dmax * scale_cost
+     noutliers = 6
+     cl_detected = find(cl)
+     gt_detected = find(gt)
+     outlier_weight =-100*f.dmax*scale_cost
 
     (pixToIdxCL, idxToPixCL, nCL, matchableCL, pixToIdxGT, idxToPixGT, nGT, matchableGT, ee) = pixel_mapping(cl, gt, dmax)
 
-    local I = sizehint!(Vector{Int64}(),(nCL+nGT)*6)
-    local J = sizehint!(Vector{Int64}(),(nCL+nGT)*6)
-    local w     = sizehint!(Vector{Float64}(),(nCL+nGT)*6)
+     I = sizehint!(Vector{Int64}(),(nCL+nGT)*6)
+     J = sizehint!(Vector{Int64}(),(nCL+nGT)*6)
+     w     = sizehint!(Vector{Float64}(),(nCL+nGT)*6)
     
     Aidx(x) = Integer(x)
     Aoutlier(x) = Integer(nCL+x)
@@ -93,7 +93,7 @@ function evaluate(f::FBoundary, cl_seg::Matrix{T}, gt_seg::Matrix{T}) where T<:I
     Boutlier(x) = Integer(nCL+nGT+nGT+x)
 
     
-    local n = 2*(nCL+nGT)
+     n = 2*(nCL+nGT)
     for (edge, weight) in ee
         push!(I, Aidx(pixToIdxCL[edge[1]]))
         push!(J, Bidx(pixToIdxGT[edge[2]]))
@@ -149,26 +149,26 @@ function evaluate(f::FBoundary, cl_seg::Matrix{T}, gt_seg::Matrix{T}) where T<:I
         push!(w, outlier_weight)
     end
         
-    local match = bipartite_matching(sparse(I,J,w,n,n))
+     match = bipartite_matching(sparse(I,J,w,n,n))
     (cl_edge, gt_edge) = edge_list(match)
-    local matchCL = zeros(Integer,size(cl))
-    local matchG = zeros(Integer,size(cl))
-    local ff = 0
+     matchCL = zeros(Integer,size(cl))
+     matchG = zeros(Integer,size(cl))
+     ff = 0
     for j=1:length(cl_edge)
-        local v1 = cl_edge[j]
-        local v2 = gt_edge[j] - (nCL+nGT)
+         v1 = cl_edge[j]
+         v2 = gt_edge[j] - (nCL+nGT)
         if (v1 > nCL+nGT)
-            local t = v1
+             t = v1
             v1 = v2
             v2 = t
         end
         if (v1<= nCL) &&  (v2<=nGT)
-            local pix1 = idxToPixCL[v1]
+             pix1 = idxToPixCL[v1]
             if cl[pix1[1],pix1[2]]                
                 matchCL[pix1[1], pix1[2]] = v2
             end
             
-            local pix2 = idxToPixGT[v2]
+             pix2 = idxToPixGT[v2]
             if gt[pix2[1],pix2[2]]
                 
                 matchG[pix2[1],pix2[2]] = v1
@@ -176,23 +176,23 @@ function evaluate(f::FBoundary, cl_seg::Matrix{T}, gt_seg::Matrix{T}) where T<:I
         end
     end
 
-    local cntR = sum(matchG.>0)
-    local sumR = length(gt_detected)
-    local cntP = sum(matchCL.>0)
-    local sumP = length(cl_detected)
-    local rec = cntR/sumR;
-    local prec = cntP/sumP;
+     cntR = sum(matchG.>0)
+     sumR = length(gt_detected)
+     cntP = sum(matchCL.>0)
+     sumP = length(cl_detected)
+     rec = cntR/sumR;
+     prec = cntP/sumP;
     return ((2*prec*rec)/(prec+rec), prec, rec)
 end
 
 function evaluate(d, cl::Matrix{T}, gt::Matrix{T}) where T<:Integer
-    local N = prod(size(cl))
-    local clusters_cl = [(cl.==j) for j in unique(cl)]
-    local clusters_gt = [(gt.==j) for j in unique(gt)]
+     N = prod(size(cl))
+     clusters_cl = [(cl.==j) for j in unique(cl)]
+     clusters_gt = [(gt.==j) for j in unique(gt)]
 
-    local sum_tot = 0
+     sum_tot = 0
     for c in clusters_cl
-        local length = sum(c)
+         length = sum(c)
         sum_tot = sum_tot + maximum([length*edge_weight(d, c,g) for g in clusters_gt])            
     end
     return sum_tot / N
@@ -201,28 +201,30 @@ end
 """
 Precision
 """
-type Precision end
+struct Precision
+end
 function edge_weight(d::Precision, cl::BitArray{2}, gt::BitArray{2})
     return precision(roc(vec(gt),vec(cl)))
 end
 """
 FMeasure
 """
-type FMeasure end
+struct FMeasure
+end
 function edge_weight(d::FMeasure, cl::BitArray{2}, gt::BitArray{2})
     return f1score(roc(vec(gt),vec(cl)))
 end
 """
 Segmentation Covering
 """
-type SegmentationCovering end
+struct SegmentationCovering end
 function edge_weight(d::SegmentationCovering, cl::BitArray{2}, gt::BitArray{2})
     return 1-jaccard(Integer.(vec(gt)),Integer.(vec(cl)))
 end
 """
 Variation of Information
 """
-type VariationOfInformation
+struct VariationOfInformation
     normalize::Bool
 end
 function VariationOfInformation()
@@ -230,22 +232,22 @@ function VariationOfInformation()
 end  
 
 function H(clusters::Vector{BitArray{2}})    
-    local n = prod(size(clusters[1]))    
-    local tot_sum = 0
+     n = prod(size(clusters[1]))    
+     tot_sum = 0
     for c in clusters
-        local R = sum(c)
+         R = sum(c)
         tot_sum = tot_sum + R*log(R/n)
     end
     return (-1/n)*tot_sum    
 end
 function I(clusters1::Vector{BitArray{2}}, clusters2::Vector{BitArray{2}})
-    local tot_sum = 0
-    local n = prod(size(clusters1[1]))
+     tot_sum = 0
+     n = prod(size(clusters1[1]))
     for c1 in clusters1
-        local R1 = sum(c1)
+         R1 = sum(c1)
         for c2 in clusters2
-            local R2 = sum(c2)
-            local intersection = sum(c1 .& c2)
+             R2 = sum(c2)
+             intersection = sum(c1 .& c2)
             if (intersection>0)
                 tot_sum = tot_sum + intersection *log(((n*intersection)/(R1*R2)))
             end
@@ -255,10 +257,10 @@ function I(clusters1::Vector{BitArray{2}}, clusters2::Vector{BitArray{2}})
             
 end
 function evaluate(d::VariationOfInformation, cl::Matrix{T}, gt::Matrix{T}) where T<:Integer
-    local ff = varinfo(maximum(cl), vec(cl),maximum(gt),vec(gt))
-    local clusters_cl = [(cl.==j) for j in unique(cl)]
-    local clusters_gt = [(gt.==j) for j in unique(gt)]
-    local voi =  H(clusters_cl) + H(clusters_gt) - 2*I(clusters_cl,clusters_gt)
+     ff = varinfo(maximum(cl), vec(cl),maximum(gt),vec(gt))
+     clusters_cl = [(cl.==j) for j in unique(cl)]
+     clusters_gt = [(gt.==j) for j in unique(gt)]
+     voi =  H(clusters_cl) + H(clusters_gt) - 2*I(clusters_cl,clusters_gt)
     if (d.normalize)
         return voi / 2*log(max(maximum(cl),maximum(gt)))
     else
@@ -270,8 +272,8 @@ RandIndex
 """
 struct RandIndex end
 function evaluate(d::RandIndex, c1::Matrix{T}, gt::Matrix{T}) where T<:Integer
-    local n = prod(size(c1))
-    local M = zeros(2,2)
+     n = prod(size(c1))
+     M = zeros(2,2)
     (a,b,c,d) = randindex(vec(c1), vec(gt))
     return b
 end
@@ -280,7 +282,7 @@ FMeasure Regions
 """
 struct FMeasureRegions end
 
-doc""""
+""""
 ```julia
 function relabel(c1::Matrix}, part_bimap=Dict{Integer,Integer}()) where T<:Integer
 ```
@@ -288,8 +290,8 @@ It relabels a partition in scanning order. Bimaps are the look up tables of the 
   - author Jordi Pont Tuset <jordi.pont@upc.edu>
 """
 function relabel(c1::Matrix{T}, bimap=Dict{Integer,Integer}()) where T<:Integer
-    local partition_out = zeros(Integer, size(c1))
-    local max_region = 1;
+     partition_out = zeros(Integer, size(c1))
+     max_region = 1;
     for I in CartesianRange(size(c1))
         if !haskey(bimap, c1[I])
             bimap[c1[I]] = max_region;
@@ -301,7 +303,7 @@ function relabel(c1::Matrix{T}, bimap=Dict{Integer,Integer}()) where T<:Integer
     end
     return (partition_out, max_region-1)
 end
-doc"""
+"""
 ```julia
 function evaluate(d::FMeasureRegions, c1::Matrix{T}, gt::Matrix{T}) where T<:Integer
 ```
@@ -317,20 +319,20 @@ function evaluate(d::FMeasureRegions, c1::Matrix{T}, gt::Matrix{T}) where T<:Int
 
     (partition1_relab, num_reg_1) = relabel(c1)
     (partition2_relab, num_reg_2) = relabel(gt)
-    local c = Clustering.counts(partition1_relab, partition2_relab,(1:maximum(partition1_relab),1:maximum(partition2_relab))) # form contingency matrix
+     c = Clustering.counts(partition1_relab, partition2_relab,(1:maximum(partition1_relab),1:maximum(partition2_relab))) # form contingency matrix
 
-    local n = round(Int,sum(c))
-    local nis = sum(sum(c,2).^2)        # sum of squares of sums of rows
-    local njs = sum(sum(c,1).^2)        # sum of squares of sums of columns
-    local t2 = sum(c.^2)                # sum over rows & columnns of nij^2
-    local t3 = .5*(nis+njs)
-    local n11 = (t2-n)/2
-    local n00 = (n^2 - nis -njs +t2)/2
-    local n10 = (nis-t2)/2
-    local n01 = (njs-t2)/2
+     n = round(Int,sum(c))
+     nis = sum(sum(c,2).^2)        # sum of squares of sums of rows
+     njs = sum(sum(c,1).^2)        # sum of squares of sums of columns
+     t2 = sum(c.^2)                # sum over rows & columnns of nij^2
+     t3 = .5*(nis+njs)
+     n11 = (t2-n)/2
+     n00 = (n^2 - nis -njs +t2)/2
+     n10 = (nis-t2)/2
+     n01 = (njs-t2)/2
 
-    local precision = n11/(n11+n10);
-    local recall    = n11/(n11+n01);
+     precision = n11/(n11+n10);
+     recall    = n11/(n11+n01);
     if (precision+recall>0)
         return (2*precision*recall/(precision+recall), precision, recall)
     else
@@ -353,9 +355,9 @@ end
 
 
 function calculate_regions(num_reg_gt::Integer, num_reg_part::Integer,  intersect_matrix::Matrix)
-    local image_area        = 0;    
-    local region_areas_gt   = zeros(Integer,num_reg_gt)
-    local region_areas_part = zeros(Integer, num_reg_part);    
+     image_area        = 0;    
+     region_areas_gt   = zeros(Integer,num_reg_gt)
+     region_areas_part = zeros(Integer, num_reg_part);    
     for ii=1:num_reg_gt
         for jj=1:num_reg_part
             image_area += intersect_matrix[jj,ii];
@@ -367,15 +369,15 @@ function calculate_regions(num_reg_gt::Integer, num_reg_part::Integer,  intersec
 end
 function get_candidates(image_area::Integer, region_areas::Vector)
     
-    local area_percentile = 0.99;
-    local area_map  = Vector{Tuple{Float64, Integer}}() # Mapping between each region area and its id
-    local candidates = Dict{Integer,Bool}()
+     area_percentile = 0.99;
+     area_map  = Vector{Tuple{Float64, Integer}}() # Mapping between each region area and its id
+     candidates = Dict{Integer,Bool}()
     #Get candidates in the partition (remove percentile of small area)
     for ii=1:length(region_areas)
         push!(area_map,((region_areas[ii])/float(image_area),ii));
     end
     sort!(area_map, by=x->x[1],rev=true)
-    local curr_pct = 0;
+     curr_pct = 0;
     for (area_prop, area) in area_map
         if (curr_pct < area_percentile)
             candidates[area] = true
@@ -386,35 +388,37 @@ function get_candidates(image_area::Integer, region_areas::Vector)
     end
     return candidates
 end
-function evaluate(c::PRObjectsAndParts, assignments_seg::Matrix{T}, assignments_gt::Matrix{T}) where T<:Integer
+function evaluate(c::PRObjectsAndParts,
+                  assignments_seg::Matrix{T},
+                  assignments_gt::Matrix{T}) where T<:Integer
 
-    const NOT_CLASSIFIED = 1
-    const OBJECT         = 2
-    const PART           = 3
+    NOT_CLASSIFIED = 1
+    OBJECT         = 2
+    PART           = 3
 
     assignments_seg = relabel(assignments_seg)[1]
     assignments_gt  = relabel(assignments_gt)[1]
-    local intersect_matrix = Clustering.counts(assignments_seg, assignments_gt,(1:maximum(assignments_seg),1:maximum(assignments_gt))) # form contingency matrix
+     intersect_matrix = Clustering.counts(assignments_seg, assignments_gt,(1:maximum(assignments_seg),1:maximum(assignments_gt))) # form contingency matrix
    
-    local num_reg_part        = size(intersect_matrix,1)
-    local classification_part = ones(Integer,num_reg_part)
-    local prec_part           = zeros(num_reg_part);
-    local mapping_gt          = Dict{Integer,Integer}()
-    local mapping_part        = Dict{Integer,Integer}()
-    local num_reg_gt          = size(intersect_matrix,2)
-    local classification_gt   = ones(Integer, num_reg_gt)
-    local recall_gt           = zeros(num_reg_gt);
+     num_reg_part        = size(intersect_matrix,1)
+     classification_part = ones(Integer,num_reg_part)
+     prec_part           = zeros(num_reg_part);
+     mapping_gt          = Dict{Integer,Integer}()
+     mapping_part        = Dict{Integer,Integer}()
+     num_reg_gt          = size(intersect_matrix,2)
+     classification_gt   = ones(Integer, num_reg_gt)
+     recall_gt           = zeros(num_reg_gt);
     
     (region_areas_gt, region_areas_part, image_area) =  calculate_regions(num_reg_gt, num_reg_part, intersect_matrix)
 
-    local candidate_part = get_candidates(image_area, region_areas_part)
-    local candidate_gt   = get_candidates(image_area, region_areas_gt)
+     candidate_part = get_candidates(image_area, region_areas_part)
+     candidate_gt   = get_candidates(image_area, region_areas_gt)
 
     # Scan through table and find all OBJECT mappings */
     for ii=1:num_reg_gt
         for jj=1:num_reg_part
-            local recall    = intersect_matrix[jj,ii]/float(region_areas_gt[ii]);
-            local precision = intersect_matrix[jj,ii]/float(region_areas_part[jj]);
+             recall    = intersect_matrix[jj,ii]/float(region_areas_gt[ii]);
+             precision = intersect_matrix[jj,ii]/float(region_areas_part[jj]);
             # Ignore those regions with tiny area */
             if(candidate_gt[ii]==true && candidate_part[jj]==true)
                 # Is it an object candidate? */
@@ -446,14 +450,14 @@ function evaluate(c::PRObjectsAndParts, assignments_seg::Matrix{T}, assignments_
     
 
     #Count everything
-    local num_objects_part = 0;
-    local num_objects_gt = 0;
-    local num_parts_part = 0;
-    local num_parts_gt = 0;
-    local num_underseg_part = 0;
-    local num_overseg_gt = 0;
-    local num_candidates_part = 0;
-    local num_candidates_gt = 0;
+     num_objects_part = 0;
+     num_objects_gt = 0;
+     num_parts_part = 0;
+     num_parts_gt = 0;
+     num_underseg_part = 0;
+     num_overseg_gt = 0;
+     num_candidates_part = 0;
+     num_candidates_gt = 0;
 
     for jj=1:num_reg_part
         num_candidates_part += candidate_part[jj];
@@ -477,8 +481,8 @@ function evaluate(c::PRObjectsAndParts, assignments_seg::Matrix{T}, assignments_
         end
     end
     # Precision and recall
-    local precision = (num_objects_part + num_underseg_part + c.B*num_parts_part)/float(num_candidates_part);
-    local recall    = (num_objects_gt   + num_overseg_gt    + c.B*num_parts_gt  )/float(num_candidates_gt);
+     precision = (num_objects_part + num_underseg_part + c.B*num_parts_part)/float(num_candidates_part);
+     recall    = (num_objects_gt   + num_overseg_gt    + c.B*num_parts_gt  )/float(num_candidates_gt);
 
     # F-measure for Region Detection
     if(precision==0 && recall==0)
@@ -494,13 +498,11 @@ Boundary Displacement Error
 Authors: John Wright, and Allen Y. Yang
 Contact: Allen Y. Yang <yang@eecs.berkeley.edu>
 """
-type BoundaryDisplacementError
+struct BoundaryDisplacementError
 end
 using Images
 function evaluate(cfg::BoundaryDisplacementError, cl::Matrix{T}, gt::Matrix{T})  where T<:Integer
     assert(size(cl)==size(gt))
-
-    
     # Generate boundary maps
     boundary1 = boundary_map(BoundaryGradient(), cl)
     boundary2 = boundary_map(BoundaryGradient(), gt)
@@ -512,7 +514,7 @@ function evaluate(cfg::BoundaryDisplacementError, cl::Matrix{T}, gt::Matrix{T}) 
     # compute the distance of the pixels in boundary1 to the nearest pixel in% boundary2:
     dist_12 = sum(boundary1 .* D2 );
     dist_21 = sum(boundary2 .* D1 );
-    local avgError_12 = dist_12 / sum(boundary1);
-    local avgError_21 = dist_21 / sum(boundary2);
+    avgError_12 = dist_12 / sum(boundary1);
+    avgError_21 = dist_21 / sum(boundary2);
     return (avgError_12 + avgError_21) / 2;
 end

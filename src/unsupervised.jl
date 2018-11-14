@@ -7,23 +7,23 @@ struct ECW
     threshold::Float64
 end
 function evaluate(c::ECW, image::Matrix{Lab}, segments::Matrix{T}) where T<:Integer
-    local segments_mean = [i->segment_mean(segments,i) for i in unique(segments)]
-    local R = length(segments_mean)
-    local mean_segments = map(i->segments_mean[i],segments)
-    local E_intra = sum(norm.(image-mean_segments).<  c.threshold)
-    local C = 1/6
-    local sum = 0
+     segments_mean = [i->segment_mean(segments,i) for i in unique(segments)]
+     R = length(segments_mean)
+     mean_segments = map(i->segments_mean[i],segments)
+     E_intra = sum(norm.(image-mean_segments).<  c.threshold)
+     C = 1/6
+     sum = 0
     for i=1:R-1
-        local a = segments.==i
+         a = segments.==i
         for j=i+1:R
-            local b = segments.==j            
+             b = segments.==j            
             if (norm(segments_mean[i] - segments_mean[j])  > c.threshold)                
-                local Kij = sum((a[1:end-1,1:end] + b[2:end,1:end]).==2)  + sum((a[1:end,1:end-1] + b[1:end,2:end-1]).==2)
+                 Kij = sum((a[1:end-1,1:end] + b[2:end,1:end]).==2)  + sum((a[1:end,1:end-1] + b[1:end,2:end-1]).==2)
                 sum+=Kij                
             end
         end
     end
-    local E_inter= (2*sum)/(C*prod(size(segmnets)))
+     E_inter= (2*sum)/(C*prod(size(segmnets)))
     return 0.5*(E_intra +  E_inter)   
 end
 
@@ -38,23 +38,23 @@ Unsupervised Evaluation of Image Segmentation Application to Multi-spectral Imag
 
 "This contrast takes into account the internal and external contrast of the regions measured in the neighborhood of each pixel"
 """
-type Zeboudj
+struct Zeboudj
 end
 
 function evaluate(c::Zeboudj, image::Matrix{T1}, segments::Matrix{T}) where T<:Integer where T1<:Number
-    local N = maximum(segments)
-    local inside = zeros(N)
-    local outside = zeros(N)
-    local segments_sizes = zeros(N)
-    local border_lengths = zeros(N)
+     N = maximum(segments)
+     inside = zeros(N)
+     outside = zeros(N)
+     segments_sizes = zeros(N)
+     border_lengths = zeros(N)
     I1, Iend = first(R), last(R)
-    local W = CartesianIndex(r,r)
+     W = CartesianIndex(r,r)
     for I in CartesianRange(size(image))
-        local current_label = segments[I]
+         current_label = segments[I]
         segment_sizes[curret_label]+=1
-        local max_inside = -1
-        local max_outside = -1
-        local is_a_border_point = false
+         max_inside = -1
+         max_outside = -1
+         is_a_border_point = false
         for J in CartesianRange(max(I1, I-W), min(Iend, I+W))
             if current_label != segments[J]
                 is_a_border_point = true
@@ -72,7 +72,7 @@ function evaluate(c::Zeboudj, image::Matrix{T1}, segments::Matrix{T}) where T<:I
     inside=inside/segments_sizes
     outside=outside/border_lengths
 
-    local C = zeros(N)
+    C = zeros(N)
     for j=1:N
         if (inside[j] <0 ) &&  (inside[j] < outside[j])
             C[j]= 1- (inside[j]/outside[j])
@@ -84,7 +84,7 @@ function evaluate(c::Zeboudj, image::Matrix{T1}, segments::Matrix{T}) where T<:I
     end
     return (1/(prod(size(image)))) *sum(segments_sizes.*C)
 end
-doc"""
+@doc raw"""
 An Entropy-based Objective Evaluation Method for Image Segmentation
 Hui Zhang*, Jason E. Fritts and Sally A. Goldman
 
@@ -95,7 +95,7 @@ $H_v(R_j) = - \sum\limits_{m \in V^{(v)}_j} \dfrac{L_j(m)}{S_j) log(\dfrac{L_j(m
 
 $ H_l(I) = - \sum\limits_{j=1}^N \dfrac{S_j}{S_I} log(\dfrac{S_j}{S_I}) $
 """
-type ValuesEntropy
+struct ValuesEntropy
 end
 function components(a::Vector{T}) where T<:Color
     return (comp1.(a), comp2.(a), comp3.(a))
@@ -127,7 +127,7 @@ function evaluate(c::ValuesEntropy, image::Matrix, segments::Matrix{T}) where T<
     Hl = -Hl
     return Hr + Hl
 end
-doc"""
+@doc raw"""
 Multiresolution Color Image Segmentation
 Jianqing Liu and Yee-Hong Yang, Senior Member, IEEE
 
@@ -139,7 +139,7 @@ end
 function scale_factor(c::LiuYangF, image::Matrix, segments::Matrix)
     return sqrt(maximum(segments))
 end
-doc"""
+@doc raw"""
 ´´´julia
 function color_error_sum(image::Matrix, segments::Matrix{Integer)
 ´´´
@@ -183,7 +183,7 @@ function evaluate(c::FPrime, image::Matrix, segments::Matrix{T}) where T<:Intege
     return scale_factor(c, image, segments)*color_error_sum(image, segments)
 end
 
-doc"""
+@doc raw"""
 Quantitative evaluation of color image segmentation results
 M. Borsotti a, P. Campadelli a,2, R. Schettini b,
 
