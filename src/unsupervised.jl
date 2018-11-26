@@ -1,4 +1,6 @@
 using Colors
+export ECW,
+       FRCRGBD
 # On Selecting the Best Unsupervised Evaluation Techniques for Image Segmentation
 """
 The use of visible color difference in the quantitative evaluation of color image segmentation,
@@ -50,11 +52,11 @@ function evaluate(c::Zeboudj, image::Matrix{T1}, segments::Matrix{T}) where T<:I
     I1, Iend = first(R), last(R)
      W = CartesianIndex(r,r)
     for I in CartesianRange(size(image))
-         current_label = segments[I]
+        current_label = segments[I]
         segment_sizes[curret_label]+=1
-         max_inside = -1
-         max_outside = -1
-         is_a_border_point = false
+        max_inside = -1
+        max_outside = -1
+        is_a_border_point = false
         for J in CartesianRange(max(I1, I-W), min(Iend, I+W))
             if current_label != segments[J]
                 is_a_border_point = true
@@ -241,3 +243,56 @@ function evaluate(c::ErdemMethod, image::Matrix, segments::Matrix{Integer})
     end
     return 1 - (sum/length(inside))
 end
+struct  FRCRGBD
+end
+function evaluate(c::FRCRGBD,
+                  I::Array{T, 3},
+                  R::Matrix,
+                  segments::Matrix{<:Integer}) where T<:Number
+    K  = maximum(segments)
+    DInterI = 0
+    DIntraI = 0
+    DInterR = 0
+    DIntraR = 0
+    img_mask =  fill(false,size(I))
+    for i in unique(as)
+        idxi  = find(as.==i)
+        valsIi = I[idxi]
+        valsRi = R[idxi]
+        stdIi  = std(valsIi)
+        stdRi  = std(valsRi)
+        for j in unique(as)
+            idxj   = find(as.==j)
+            valsIj = I[idxj]
+            valsRj = R[idxj]
+            if (i!=j)
+                DInterI = DInterI + abs(mean(valsIi) - mean(valsIj))
+                DInterR = DInterR + abs(mean(valsRi) - mean(valsRj))
+            end
+        end
+        (rows,cols) = ind2sub(size(I), idxi)
+        std_local_I = 0
+        fill!(img_mask,false)
+        for (r,c) in zip(rows,cols)
+            img_mask[r,c] = true
+        end
+        for (r,c) in zip(rows,cols)
+            wr = max(r-1,1):min(r+1,size(I,1))
+            wc = max(c-1,1):min(c-1,size(I,2))
+            if sum(img_mask[wr,wc]) == 9
+                std_local_I = std_local_I + std(I[wr,wc])
+            end
+        end
+        std_local_I  = std_local_I  / length(idxi)
+        DIntraI = DIntraI + max(stdIi - std_local_I,0)*((length(idxi))/(length(as)))
+        DIntraR = DIntraR + stdRi * ((length(idxi))/(length(as)))
+
+    end
+    DInterI = DInterI / (K*(K-1))
+    DInterR = DInterR / (K*(K-1))
+    QColor = (DInterI - DIntraI)/2
+    QDepth = (DInterR - DIntraR) / 2
+
+    return QColor + 3*QDepth
+end
+
