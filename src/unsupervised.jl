@@ -245,27 +245,46 @@ function evaluate(c::ErdemMethod, image::Matrix, segments::Matrix{Integer})
 end
 struct  FRCRGBD
 end
+function color_std(colors)
+    return std(channelview(colors))
+end
+
 function evaluate(c::FRCRGBD,
                   I::Array{T, 3},
                   R::Matrix,
                   segments::Matrix{<:Integer}) where T<:Number
-    K  = maximum(segments)
-    DInterI = 0
-    DIntraI = 0
-    DInterR = 0
-    DIntraR = 0
-    img_mask =  fill(false,size(I))
-    for i in unique(as)
-        idxi  = find(as.==i)
-        valsIi = I[idxi]
+    K = maximum(segments)
+    unique_segments = unique(segments)
+    params = Dict()
+    for i in unique_segments
+        mask = segments .== i
+        indices = findall(mask)
+        valsIi = I[idxi, :]
+        valsRi = R[idxi]]
+        params[i] = Dict(
+        'stdI'=> std(valsIi, dims=1),
+        'stdR'=> std(valsRi),
+        'meanI'=>mean(valsIi, dims=1),
+        'meanR'=>mean(valsRi),
+        'mask'=> mask
+        'S*'=>erode(mask)
+        )
+    end
+    sigma_w = mapwindow(color_std,
+                        colorview(RGB, img),
+                        (3,3, 1))
+    for i in unique_segments
+        S_star = params[i]['S*'] 
+        sigma_t = sum(sigma_w[findall(S_star), :])/sum(S_star)
+        valsIi = I[idxi, :]
         valsRi = R[idxi]
-        stdIi  = std(valsIi)
-        stdRi  = std(valsRi)
-        for j in unique(as)
-            idxj   = find(as.==j)
-            valsIj = I[idxj]
+        stdIi = std(valsIi)
+        stdRi = std(valsRi)
+        for j in unique_segments
+            idxj = findall(segments.==j)
+            valsIj = I[idxj, :]
             valsRj = R[idxj]
-            if (i!=j)
+            if (i != j)
                 DInterI = DInterI + abs(mean(valsIi) - mean(valsIj))
                 DInterR = DInterR + abs(mean(valsRi) - mean(valsRj))
             end
