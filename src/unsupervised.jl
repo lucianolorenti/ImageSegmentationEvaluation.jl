@@ -1,4 +1,5 @@
 using Colors
+using Statistics
 export ECW,
        FRCRGBD
 # On Selecting the Best Unsupervised Evaluation Techniques for Image Segmentation
@@ -253,65 +254,48 @@ function evaluate(c::FRCRGBD,
                   I::Array{T, 3},
                   R::Matrix,
                   segments::Matrix{<:Integer}) where T<:Number
+    N = size(segments, 1) * size(segments, 2)
     K = maximum(segments)
     unique_segments = unique(segments)
     params = Dict()
+    sigma_w = mapwindow(color_std,
+                        colorview(RGB, I),
+                        (3,3))
+
     for i in unique_segments
         mask = segments .== i
         indices = findall(mask)
-        valsIi = I[idxi, :]
-        valsRi = R[idxi]]
+        valsIi = I[:, indices]
+        valsRi = R[indices]
+        S_star = erode(mask)
         params[i] = Dict(
-        'stdI'=> std(valsIi, dims=1),
-        'stdR'=> std(valsRi),
-        'meanI'=>mean(valsIi, dims=1),
-        'meanR'=>mean(valsRi),
-        'mask'=> mask
-        'S*'=>erode(mask)
+        :stdI=> std(valsIi),
+        :stdR=> std(valsRi),
+        :meanI=>mean(valsIi, dims=1),
+        :meanR=>mean(valsRi),
+        :n=>sum(mask),
+        :sigma_t=>sum(sigma_w[findall(S_star)])/sum(S_star)
         )
     end
-    sigma_w = mapwindow(color_std,
-                        colorview(RGB, img),
-                        (3,3, 1))
+    DIntraI = 0
+    DInterI = 0
+    DIntraD = 0
+    DInterD = 0
     for i in unique_segments
-        S_star = params[i]['S*'] 
-        sigma_t = sum(sigma_w[findall(S_star), :])/sum(S_star)
-        valsIi = I[idxi, :]
-        valsRi = R[idxi]
-        stdIi = std(valsIi)
-        stdRi = std(valsRi)
+        DIntraI += max(params[i][:stdI] - params[i][:sigma_t], 0)*(params[:n]/N)
+        DIntraD += parmas[i][stdR]*(params[:n]/N)
         for j in unique_segments
-            idxj = findall(segments.==j)
-            valsIj = I[idxj, :]
-            valsRj = R[idxj]
-            if (i != j)
-                DInterI = DInterI + abs(mean(valsIi) - mean(valsIj))
-                DInterR = DInterR + abs(mean(valsRi) - mean(valsRj))
+            if i != j
+                DInterI += norm(params[i][:meanI] - params[j][:meanJ])
+                DInterD += norm(params[i][:meanR] - params[j][:meanR])
             end
         end
-        (rows,cols) = ind2sub(size(I), idxi)
-        std_local_I = 0
-        fill!(img_mask,false)
-        for (r,c) in zip(rows,cols)
-            img_mask[r,c] = true
-        end
-        for (r,c) in zip(rows,cols)
-            wr = max(r-1,1):min(r+1,size(I,1))
-            wc = max(c-1,1):min(c-1,size(I,2))
-            if sum(img_mask[wr,wc]) == 9
-                std_local_I = std_local_I + std(I[wr,wc])
-            end
-        end
-        std_local_I  = std_local_I  / length(idxi)
-        DIntraI = DIntraI + max(stdIi - std_local_I,0)*((length(idxi))/(length(as)))
-        DIntraR = DIntraR + stdRi * ((length(idxi))/(length(as)))
-
     end
     DInterI = DInterI / (K*(K-1))
     DInterR = DInterR / (K*(K-1))
-    QColor = (DInterI - DIntraI)/2
+    QColor = (DInterI - DIntraI) / 2 
     QDepth = (DInterR - DIntraR) / 2
-
+    println("aa")
     return QColor + 3*QDepth
 end
 
