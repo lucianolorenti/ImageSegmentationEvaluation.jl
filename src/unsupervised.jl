@@ -1,5 +1,6 @@
 using Colors
 using Statistics
+using LinearAlgebra
 export ECW,
        FRCRGBD
 # On Selecting the Best Unsupervised Evaluation Techniques for Image Segmentation
@@ -269,12 +270,14 @@ function evaluate(c::FRCRGBD,
         valsRi = R[indices]
         S_star = erode(mask)
         params[i] = Dict(
-        :stdI=> std(valsIi),
-        :stdR=> std(valsRi),
-        :meanI=>mean(valsIi, dims=1),
-        :meanR=>mean(valsRi),
-        :n=>sum(mask),
-        :sigma_t=>sum(sigma_w[findall(S_star)])/sum(S_star)
+            :stdI=> std(valsIi),
+            :stdR=> std(valsRi),
+            :meanI=>dropdims(
+                mean(valsIi, dims=[2, 3]),
+                dims=2),
+            :meanR=>mean(valsRi),
+            :n=>sum(mask),
+            :sigma_t=>sum(sigma_w[findall(S_star)])/sum(S_star)
         )
     end
     DIntraI = 0
@@ -282,20 +285,19 @@ function evaluate(c::FRCRGBD,
     DIntraD = 0
     DInterD = 0
     for i in unique_segments
-        DIntraI += max(params[i][:stdI] - params[i][:sigma_t], 0)*(params[:n]/N)
-        DIntraD += parmas[i][stdR]*(params[:n]/N)
+        DIntraI += max(params[i][:stdI] - params[i][:sigma_t], 0)*(params[i][:n]/N)
+        DIntraD += params[i][:stdR]*(params[i][:n]/N)
         for j in unique_segments
             if i != j
-                DInterI += norm(params[i][:meanI] - params[j][:meanJ])
+                DInterI += norm(params[i][:meanI] - params[j][:meanI])
                 DInterD += norm(params[i][:meanR] - params[j][:meanR])
             end
         end
     end
     DInterI = DInterI / (K*(K-1))
-    DInterR = DInterR / (K*(K-1))
+    DInterD = DInterD / (K*(K-1))
     QColor = (DInterI - DIntraI) / 2 
-    QDepth = (DInterR - DIntraR) / 2
-    println("aa")
+    QDepth = (DInterD - DIntraD) / 2
     return QColor + 3*QDepth
 end
 
