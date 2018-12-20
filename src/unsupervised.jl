@@ -265,10 +265,12 @@ function evaluate(c::FRCRGBD,
 
     for i in unique_segments
         mask = segments .== i
+        println(sum(mask))
         indices = findall(mask)
         valsIi = I[:, indices]
         valsRi = R[indices]
         S_star = erode(mask)
+        println(sum(S_star))
         params[i] = Dict(
             :stdI=> std(valsIi),
             :stdR=> std(valsRi),
@@ -279,6 +281,7 @@ function evaluate(c::FRCRGBD,
             :n=>sum(mask),
             :sigma_t=>sum(sigma_w[findall(S_star)])/sum(S_star)
         )
+        println(params[i])
     end
     DIntraI = 0
     DInterI = 0
