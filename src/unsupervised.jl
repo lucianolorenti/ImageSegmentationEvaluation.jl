@@ -1,14 +1,19 @@
 using Colors
 using Statistics
 using LinearAlgebra
+using ImageSegmentation
 export ECW,
-       FRCRGBD
+    FRCRGBD
+function evaluate(algo, img, segmented_image::SegmentedImage)
+    return evaluate(algo, img, labels_map(segmented_image))
+end
+
 # On Selecting the Best Unsupervised Evaluation Techniques for Image Segmentation
 """
 The use of visible color difference in the quantitative evaluation of color image segmentation,
 """
 struct ECW
-    threshold::Float64
+        threshold::Float64
 end
 function evaluate(c::ECW, image::Matrix{Lab}, segments::Matrix{T}) where T<:Integer
      segments_mean = [i->segment_mean(segments,i) for i in unique(segments)]
@@ -245,7 +250,7 @@ function evaluate(c::ErdemMethod, image::Matrix, segments::Matrix{Integer})
     end
     return 1 - (sum/length(inside))
 end
-struct  FRCRGBD
+struct FRCRGBD
 end
 function color_std(colors)
     return std(channelview(colors))
@@ -254,9 +259,15 @@ end
 function evaluate(c::FRCRGBD,
                   I::Array{T, 3},
                   R::Matrix,
+                  seg_image::SegmentedImage) where T<:Number
+    return evaluate(c, I, R, labels_map(seg_image))
+end
+function evaluate(c::FRCRGBD,
+                  I::Array{T, 3},
+                  R::Matrix,
                   segments::Matrix{<:Integer}) where T<:Number
     N = size(segments, 1) * size(segments, 2)
-    K = maximum(segments)
+    K = 0
     unique_segments = unique(segments)
     params = Dict()
     sigma_w = mapwindow(color_std,
@@ -265,12 +276,10 @@ function evaluate(c::FRCRGBD,
 
     for i in unique_segments
         mask = segments .== i
-        println(sum(mask))
         indices = findall(mask)
         valsIi = I[:, indices]
         valsRi = R[indices]
         S_star = erode(mask)
-        println(sum(S_star))
         params[i] = Dict(
             :stdI=> std(valsIi),
             :stdR=> std(valsRi),
@@ -279,22 +288,27 @@ function evaluate(c::FRCRGBD,
                 dims=2),
             :meanR=>mean(valsRi),
             :n=>sum(mask),
-            :sigma_t=>sum(sigma_w[findall(S_star)])/sum(S_star)
+            :sigma_t=>sum(sigma_w[findall(S_star)])/sum(S_star), 
+            :n_s_star=>sum(S_star) 
         )
-        println(params[i])
     end
     DIntraI = 0
     DInterI = 0
     DIntraD = 0
     DInterD = 0
     for i in unique_segments
-        DIntraI += max(params[i][:stdI] - params[i][:sigma_t], 0)*(params[i][:n]/N)
-        DIntraD += params[i][:stdR]*(params[i][:n]/N)
-        for j in unique_segments
-            if i != j
-                DInterI += norm(params[i][:meanI] - params[j][:meanI])
-                DInterD += norm(params[i][:meanR] - params[j][:meanR])
+        if (params[i][:n_s_star] > 0)
+            K = K + 1
+            DIntraI += max(params[i][:stdI] - params[i][:sigma_t], 0)*(params[i][:n]/N)
+            DIntraD += params[i][:stdR]*(params[i][:n]/N)
+            for j in unique_segments
+                if i != j
+                    DInterI += norm(params[i][:meanI] - params[j][:meanI])
+                    DInterD += norm(params[i][:meanR] - params[j][:meanR])
+                end
             end
+        else
+            @warn("Segment to small")
         end
     end
     DInterI = DInterI / (K*(K-1))
