@@ -8,6 +8,23 @@ function evaluate(algo, img, segmented_image::SegmentedImage)
     return evaluate(algo, img, labels_map(segmented_image))
 end
 
+function unsupervised_metrics(img, segmented_image::SegmentedImage)
+    metrics = Dict("ECW" => ECW(),
+                   "Zeboudj" => Zeboudj(),
+                   "ValuesEntropy" => ValuesEntropy(),
+                   "LiuYangF" =>  LiuYangF(),
+                   "FPrime" => FPrime(),
+                   "ErdemMethod" => ErdemMethod(5, 5),
+                   "Q" => Q())
+    result = Dict()
+    for metric_name in sort(keys(metrics))
+        result[metric_name] = evaluate(metrics[metric_name],
+                                       img,
+                                       segmented_image)
+    end
+    return result               
+end
+
 # On Selecting the Best Unsupervised Evaluation Techniques for Image Segmentation
 """
 The use of visible color difference in the quantitative evaluation of color image segmentation,
@@ -16,12 +33,12 @@ struct ECW
         threshold::Float64
 end
 function evaluate(c::ECW, image::Matrix{Lab}, segments::Matrix{T}) where T<:Integer
-     segments_mean = [i->segment_mean(segments,i) for i in unique(segments)]
-     R = length(segments_mean)
-     mean_segments = map(i->segments_mean[i],segments)
-     E_intra = sum(norm.(image-mean_segments).<  c.threshold)
-     C = 1/6
-     sum = 0
+    segments_mean = [i->segment_mean(segments,i) for i in unique(segments)]
+    R = length(segments_mean)
+    mean_segments = map(i->segments_mean[i],segments)
+    E_intra = sum(norm.(image-mean_segments).<  c.threshold)
+    C = 1/6
+    sum = 0
     for i=1:R-1
          a = segments.==i
         for j=i+1:R
@@ -51,13 +68,13 @@ struct Zeboudj
 end
 
 function evaluate(c::Zeboudj, image::Matrix{T1}, segments::Matrix{T}) where T<:Integer where T1<:Number
-     N = maximum(segments)
-     inside = zeros(N)
-     outside = zeros(N)
-     segments_sizes = zeros(N)
-     border_lengths = zeros(N)
+    N = maximum(segments)
+    inside = zeros(N)
+    outside = zeros(N)
+    segments_sizes = zeros(N)
+    border_lengths = zeros(N)
     I1, Iend = first(R), last(R)
-     W = CartesianIndex(r,r)
+    W = CartesianIndex(r,r)
     for I in CartesianRange(size(image))
         current_label = segments[I]
         segment_sizes[curret_label]+=1
@@ -250,6 +267,8 @@ function evaluate(c::ErdemMethod, image::Matrix, segments::Matrix{Integer})
     end
     return 1 - (sum/length(inside))
 end
+                   
+# RGB-D Images
 struct FRCRGBD
 end
 function color_std(colors)
