@@ -9,7 +9,12 @@ function evaluate(algo, img, segmented_image::SegmentedImage)
 end
 
 function unsupervised_metrics(img, segmented_image::SegmentedImage)
-    metrics = Dict("ECW" => ECW(),
+    default_params = Dict("ECW" => Dict(
+                                   "threshold"=>0.5),
+                          )
+    params = default_params
+
+    metrics = Dict("ECW" => ECW(params=params["ECW"]["threshold"]),
                    "Zeboudj" => Zeboudj(),
                    "ValuesEntropy" => ValuesEntropy(),
                    "LiuYangF" =>  LiuYangF(),
@@ -30,7 +35,7 @@ end
 The use of visible color difference in the quantitative evaluation of color image segmentation,
 """
 struct ECW
-        threshold::Float64
+    threshold::Float64
 end
 function evaluate(c::ECW, image::Matrix{Lab}, segments::Matrix{T}) where T<:Integer
     segments_mean = [i->segment_mean(segments,i) for i in unique(segments)]
@@ -310,6 +315,7 @@ function evaluate(c::FRCRGBD,
             :sigma_t=>sum(sigma_w[findall(S_star)])/sum(S_star), 
             :n_s_star=>sum(S_star) 
         )
+        println(params[i])
     end
     DIntraI = 0
     DInterI = 0
