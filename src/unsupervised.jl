@@ -315,7 +315,6 @@ function evaluate(c::FRCRGBD,
             :sigma_t=>sum(sigma_w[findall(S_star)])/sum(S_star), 
             :n_s_star=>sum(S_star) 
         )
-        println(params[i])
     end
     DIntraI = 0
     DInterI = 0
