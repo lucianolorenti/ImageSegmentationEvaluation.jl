@@ -330,8 +330,8 @@ function evaluate(c::FRCRGBD,
             @warn("Segment to small")
         end
     end
-    DInterI = DInterI / (K*(K-1))
-    DInterD = DInterD / (K*(K-1))
+    DInterI = DInterI / (K*(K-1) + eps())
+    DInterD = DInterD / (K*(K-1) + eps())
     QColor = (DInterI - DIntraI) / 2 
     QDepth = (DInterD - DIntraD) / 2
     return QColor + 3*QDepth
