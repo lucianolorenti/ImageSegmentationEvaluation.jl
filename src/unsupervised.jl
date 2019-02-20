@@ -3,7 +3,14 @@ using Statistics
 using LinearAlgebra
 using ImageSegmentation
 export ECW,
-    FRCRGBD
+    FRCRGBD,
+    Zeboudj,
+    ValuesEntropy,
+    LiuYangF,
+    FPrime,
+    ErdemMethod,
+    Q
+
 function evaluate(algo, img, segmented_image::SegmentedImage)
     return evaluate(algo, img, labels_map(segmented_image))
 end
