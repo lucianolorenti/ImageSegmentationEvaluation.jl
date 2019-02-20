@@ -8,27 +8,6 @@ function evaluate(algo, img, segmented_image::SegmentedImage)
     return evaluate(algo, img, labels_map(segmented_image))
 end
 
-function unsupervised_metrics(img, segmented_image::SegmentedImage)
-    default_params = Dict("ECW" => Dict(
-                                   :threshold=>0.5),
-                          )
-    params = default_params
-
-    metrics = Dict("ECW" => ECW(;params["ECW"]...),
-                   "Zeboudj" => Zeboudj(),
-                   "ValuesEntropy" => ValuesEntropy(),
-                   "LiuYangF" =>  LiuYangF(),
-                   "FPrime" => FPrime(),
-                   "ErdemMethod" => ErdemMethod(5, 5),
-                   "Q" => Q())
-    result = Dict()
-    for metric_name in sort(collect(keys(metrics)))
-        result[metric_name] = evaluate(metrics[metric_name],
-                                       img,
-                                       segmented_image)
-    end
-    return result               
-end
 
 # On Selecting the Best Unsupervised Evaluation Techniques for Image Segmentation
 """
