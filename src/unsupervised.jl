@@ -10,11 +10,11 @@ end
 
 function unsupervised_metrics(img, segmented_image::SegmentedImage)
     default_params = Dict("ECW" => Dict(
-                                   "threshold"=>0.5),
+                                   :threshold=>0.5),
                           )
     params = default_params
 
-    metrics = Dict("ECW" => ECW(params=params["ECW"]["threshold"]),
+    metrics = Dict("ECW" => ECW(;params["ECW"]...),
                    "Zeboudj" => Zeboudj(),
                    "ValuesEntropy" => ValuesEntropy(),
                    "LiuYangF" =>  LiuYangF(),
@@ -22,7 +22,7 @@ function unsupervised_metrics(img, segmented_image::SegmentedImage)
                    "ErdemMethod" => ErdemMethod(5, 5),
                    "Q" => Q())
     result = Dict()
-    for metric_name in sort(keys(metrics))
+    for metric_name in sort(collect(keys(metrics)))
         result[metric_name] = evaluate(metrics[metric_name],
                                        img,
                                        segmented_image)
@@ -36,6 +36,7 @@ The use of visible color difference in the quantitative evaluation of color imag
 """
 struct ECW
     threshold::Float64
+    ECW(;threshold::Float64) = new(threshold)
 end
 function evaluate(c::ECW, image::Matrix{Lab}, segments::Matrix{T}) where T<:Integer
     segments_mean = [i->segment_mean(segments,i) for i in unique(segments)]
