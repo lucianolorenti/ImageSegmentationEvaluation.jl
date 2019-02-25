@@ -2,6 +2,7 @@ using Colors
 using Statistics
 using LinearAlgebra
 using ImageSegmentation
+using ColorTypes, ColorVectorSpace
 export ECW,
     FRCRGBD,
     Zeboudj,
@@ -11,6 +12,25 @@ export ECW,
     ErdemMethod,
     Q
 
+import Base:
+    -,
+    iterate
+
+(-)(a::Lab{T}, b::Lab{T}) where T =
+    Lab{T}(comp1(a)-comp1(b),
+                                      comp2(a)-comp2(b),
+                                      comp3(a)-comp3(b))
+
+iterate(a::Lab) = (comp1(a), 1)
+function iterate(a::Lab, i::Integer)
+    if i == 1
+        return (comp2(a), i+1)
+    elseif i == 2
+        return (comp3(a), i+1)
+    else
+        return nothing
+    end
+end
 function evaluate(algo, img, segmented_image::SegmentedImage)
     return evaluate(algo, img, labels_map(segmented_image))
 end
@@ -19,34 +39,38 @@ end
 # On Selecting the Best Unsupervised Evaluation Techniques for Image Segmentation
 """
 The use of visible color difference in the quantitative evaluation of color image segmentation,
+Hsin-Chia Chen and Sheng-Jyh Wang 
 """
 struct ECW
     threshold::Float64
     ECW(;threshold::Float64) = new(threshold)
 end
-function evaluate(c::ECW, image::Matrix{Lab}, segments::Matrix{T}) where T<:Integer
-    segments_mean = [i->segment_mean(segments,i) for i in unique(segments)]
+function evaluate(c::ECW, image::AbstractArray{Color, N}, segments::SegmentedImage) where T<:Integer where {Color<:Lab, N}
+    segments_mean = Dict(i=>convert(Lab, segment_mean(segments,i))
+                     for i in segments.segment_labels)
     R = length(segments_mean)
-    mean_segments = map(i->segments_mean[i],segments)
+    mean_segments = collect(map(
+            i->segments_mean[i],
+            segments.image_indexmap))
     E_intra = sum(norm.(image-mean_segments).<  c.threshold)
     C = 1/6
-    sum = 0
+    total_sum = 0
     for i=1:R-1
-         a = segments.==i
+        a = segments.image_indexmap .== i
         for j=i+1:R
-             b = segments.==j            
+            b = segments.image_indexmap .== j            
             if (norm(segments_mean[i] - segments_mean[j])  > c.threshold)                
-                 Kij = sum((a[1:end-1,1:end] + b[2:end,1:end]).==2)  + sum((a[1:end,1:end-1] + b[1:end,2:end-1]).==2)
-                sum+=Kij                
+                 Kij = sum((a[1:end-1,1:end] + b[2:end,1:end]).==2)  + sum((a[1:end,1:end-1] + b[1:end,2:end]).==2)
+                total_sum+=Kij                
             end
         end
     end
-     E_inter= (2*sum)/(C*prod(size(segmnets)))
+    E_inter= (2*total_sum)/(C*prod(size(segments.image_indexmap)))
     return 0.5*(E_intra +  E_inter)   
 end
 
-function evaluate(c::ECW, image::Matrix{RGB}, segments::Matrix{T}) where T<:Integer
-    return evaluate(c, Lab.(image), segments)
+function evaluate(c::ECW, image::AbstractArray{Color, N}, segments::SegmentedImage) where {Color<:RGB, N}
+    return evaluate(c, convert.(Lab, image), segments)
 end
 
 
@@ -57,50 +81,62 @@ Unsupervised Evaluation of Image Segmentation Application to Multi-spectral Imag
 "This contrast takes into account the internal and external contrast of the regions measured in the neighborhood of each pixel"
 """
 struct Zeboudj
+    radius::Integer
+    Zeboudj(;radius::Integer=3) = new(radius)
 end
 
-function evaluate(c::Zeboudj, image::Matrix{T1}, segments::Matrix{T}) where T<:Integer where T1<:Number
-    N = maximum(segments)
+function evaluate(c::Zeboudj, image::AbstractArray{Color, M}, segments::SegmentedImage) where {Color<:Colorant, M}
+    image = convert.(Gray, image)
+    N = maximum(segments.segment_labels)
     inside = zeros(N)
     outside = zeros(N)
-    segments_sizes = zeros(N)
+    segment_sizes = zeros(N)
     border_lengths = zeros(N)
+    R = CartesianIndices(segments.image_indexmap)
     I1, Iend = first(R), last(R)
-    W = CartesianIndex(r,r)
-    for I in CartesianRange(size(image))
-        current_label = segments[I]
-        segment_sizes[curret_label]+=1
+    W = CartesianIndex(c.radius,c.radius)
+    for I in CartesianIndices(size(image))
+        current_label = segments.image_indexmap[I]
+        segment_sizes[current_label] += 1
         max_inside = -1
         max_outside = -1
         is_a_border_point = false
-        for J in CartesianRange(max(I1, I-W), min(Iend, I+W))
-            if current_label != segments[J]
+        for J in max(I1, I-W):min(Iend, I+W)
+            if current_label != segments.image_indexmap[J]
                 is_a_border_point = true
-                max_outside = max(maxOutside, image[J])
+                max_outside = max(max_outside, abs(image[I] - image[J]))
             else
-                max_inside = max(maxInside, image[J])
+                max_inside = max(max_inside, abs(image[I] - image[J]))
             end            
         end
         if (is_a_border_point)
             border_lengths[current_label]+=1
         end
-        inside[current_label]+=max_inside
-        outside[current_label]+=max_outside;
+        if max_inside == -1
+            max_inside = 0
+        end
+        if max_outside == -1
+            max_outside = 0
+        end
+        inside[current_label] += max_inside
+        outside[current_label] += max_outside;
     end
-    inside=inside/segments_sizes
-    outside=outside/border_lengths
+    inside=inside ./ segment_sizes
+    outside=outside ./ border_lengths
 
     C = zeros(N)
     for j=1:N
-        if (inside[j] <0 ) &&  (inside[j] < outside[j])
-            C[j]= 1- (inside[j]/outside[j])
+        println(inside[j])
+        println(outside[j])
+        if (inside[j] > 0 ) &&  (inside[j] < outside[j])
+            C[j] = 1 - (inside[j]/outside[j])
         elseif (inside[j]==0)
-            C[j]= outside[j]
+            C[j] = outside[j]
         else
-            C[j]= 0
+            C[j] = 0
         end
     end
-    return (1/(prod(size(image)))) *sum(segments_sizes.*C)
+    return (1/(prod(size(image)))) *sum(segment_sizes.*C)
 end
 @doc raw"""
 An Entropy-based Objective Evaluation Method for Image Segmentation
@@ -124,23 +160,23 @@ end
 function components(a::Vector{T}) where T<:Number
     return a
 end
-function evaluate(c::ValuesEntropy, image::Matrix, segments::Matrix{T}) where T<:Integer
+function evaluate(c::ValuesEntropy, image::AbstractArray{C, N}, segments::SegmentedImage) where {C<:Colorant, N}
     Hr = 0
     Hl = 0 
     Si = prod(size(image))
-    for j in unique(segments)
-        segment = segments.==j
-        Sj = count(segment)
+    for j in segments.segment_labels
+        segment = segments.image_indexmap .== j
+        Sj = segments.segment_pixel_count[j]
         comps = components(image[segment])
         Hl += (Sj/Si)*(log(Sj/Si))
+        H = 0
         for k=1:length(comps)
-            Ej = 0
             for val in unique(comps[k])
                 Lj = count(comps[k].==val)
-                Ej += (Lj / Sj)*(log(Lj / Sj))
+                H += (Lj / Sj)*(log(Lj / Sj))
             end
         end
-        Hr += (Sj/Si)*(-Ej)
+        Hr += (Sj/Si)*(-H)
     end
     Hl = -Hl
     return Hr + Hl
@@ -154,8 +190,8 @@ $F(I) = \sqrt{R} \times \sum\limits_{i=1}^R \dfrac{e_i^2}{\sqrt{A_i}}$
 struct LiuYangF
 end
 
-function scale_factor(c::LiuYangF, image::Matrix, segments::Matrix)
-    return sqrt(maximum(segments))
+function scale_factor(c::LiuYangF, image::AbstractArray{C,N}, segments::SegmentedImage) where {C<:Colorant, N}
+    return sqrt(maximum(segments.segment_labels))
 end
 @doc raw"""
 ´´´julia
@@ -166,19 +202,19 @@ $\sum\limits_{i=1}^R \dfrac{e_i^2}{\sqrt{A_i}}$
 where $R$ is the number of regions in the segmented image, $A_i$ is the area, or the number of pixels of the ith region $i$, and $e_i$  the color error of region $i$. e is defined as the sum of the Euclidean distance of the color vectors between the original image and the segmented image of each pixel in the region. 
 
 """
-function color_error_sum(image::Matrix, segments::Matrix{Integer})
-    labels = unique(segments)
+function color_error_sum(c, image::AbstractArray{C, N}, segments::SegmentedImage) where {C<:Colorant, N}
+    labels = segments.segment_labels
     out = 0
     for i in labels
-        pixels_in_segment = segments.==i
-        A_i = count(pixels_in_segment)
+        pixels_in_segment = segments.image_indexmap .== i
+        A_i = segments.segment_pixel_count[i]
         e_i = sum((norm.(mean(image[pixels_in_segment]) - image[pixels_in_segment])).^2)
         out += e_i/sqrt(A_i)
     end
     return (1/(prod(size(image))))*sqrt(scale_factor(c, image, segments))*out
 end                         
-function evaluate(c::LiuYangF, image::Matrix, segments::Matrix{Integer})
-    return scale_factor(c, image, segments)*color_error_sum(image, segments)
+function evaluate(c::LiuYangF, image::AbstractArray{C, N}, segments::SegmentedImage) where {C<:Colorant, N}
+    return scale_factor(c, image, segments)*color_error_sum(c, image, segments)
 end
 
 """
@@ -188,17 +224,17 @@ M. Borsotti a, P. Campadelli a,2, R. Schettini b,
 struct FPrime
 end
 
-function scale_factor(c::FPrime, image::Matrix, segments::Matrix)
-    segment_sizes = [count(segments.==i) for i in labels]
+function scale_factor(c::FPrime, image::AbstractArray{C, N}, segments::SegmentedImage) where {C<:Colorant, N}
+    segment_sizes = values(segments.segment_pixel_count)
     scale = 0
-    for A in unique(segments_sizes)
-        R_A = count(segments_sizes.==seg_size)
+    for A in unique(segment_sizes)
+        R_A = count(segment_sizes .== A)
         scale += R_A^(1 + (1/A))
     end
     return (1/prod(size(image))) *scale
 end
-function evaluate(c::FPrime, image::Matrix, segments::Matrix{T}) where T<:Integer
-    return scale_factor(c, image, segments)*color_error_sum(image, segments)
+function evaluate(c::FPrime, image::AbstractArray{C, N}, segments::SegmentedImage)  where {C<:Colorant, N}
+    return scale_factor(c, image, segments)*color_error_sum(c, image, segments)
 end
 
 @doc raw"""
@@ -211,18 +247,17 @@ where $R$ is the number of regions in the segmented image, $A_i$ is the area, or
 """
 struct Q
 end
-function evaluate(c::Q, image::Matrix, segments::Matrix{Integer})
-    segment_sizes = [count(segments.==i) for i in labels]
-    labels = unique(segments)
+function evaluate(c::Q, image::AbstractArray{C, N}, segments::SegmentedImage) where {C<:Colorant, N}
+    segment_sizes = collect(values(segments.segment_pixel_count))
     out = 0
-    for i in labels
-        pixels_in_segment = segments.==i
-        A_i = count(pixels_in_segment)
+    for i in segments.segment_labels
+        pixels_in_segment = segments.image_indexmap .== i
+        A_i = segments.segment_pixel_count[i]
         e_i = sum((norm.(mean(image[pixels_in_segment]) - image[pixels_in_segment])).^2)
-        R_A_i = count(segments_sizes.==A_i)
+        R_A_i = count(segment_sizes.==A_i)
         out += e_i^2/(1 + log(A_i)) + (R_A_i/A_i)^2
     end
-    return (1/(10000*prod(size(image))))*sqrt(maximum(labels))*out
+    return (1/(10000*prod(size(image))))*sqrt(maximum(segments.segment_labels))*out
 end
 
 """
@@ -234,21 +269,18 @@ struct ErdemMethod
     L::Integer # Length of the normal line
 end
 function mean_value(img::Matrix{T}, pos, w) where T
-    R = CartesianRange(size(img))
+    R = CartesianIndices(size(img))
     I, L = first(R), last(R)
     sum = zeros(T)
-    range = CartesianRange(max(I, pos-w), min(L, pos+w))
+    range = CartesianIndices(max(I, pos-w), min(L, pos+w))
     for N in  range
         sum += img[N]
     end
     return sum / prod(size(range))
 end
 
-function evaluate(c::ErdemMethod, image::Matrix, segments::Matrix{Integer})
-    (h,w) = size(image)
-    for i in unique(segments)
-        segment = segments.==i
-    end
+function evaluate(c::ErdemMethod, image::AbstractArray{C, N}, segments::SegmentedImage) where {C<:Colorant, N}
+    (h, w) = size(segments.image_indexmap)
     sum = 0
     (inside, outside) = normal_lines_extremes(boundary, c.L)
     for i=1:length(inside)
