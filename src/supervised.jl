@@ -3,6 +3,7 @@ using Distances
 using Clustering
 using MatrixNetworks
 using ImageSegmentation
+using SparseArrays
 export
     edge_weight,
     boundary_map,
@@ -14,8 +15,7 @@ export
     RandIndex,
     FMeasureRegions,
     PRObjectsAndParts,
-    BoundaryDisplacementError,
-    thinning
+    BoundaryDisplacementError
 using MLBase
 
 
@@ -52,12 +52,12 @@ function pixel_mapping(cl::AbstractMatrix, gt::AbstractMatrix, dmax)
     nGT = 0
     r = round(Integer,ceil(dmax))
     for j in findall(cl)
-        (rc,cc) = ind2sub(size(cl),j)
-        wInit   = CartesianIndex(max.((rc,cc).-(r,r),(1,1)))        
-        wEnd    = CartesianIndex(min.((rc,cc).+(r,r),size(cl)))
-        for CI in CartesianRange( wInit, wEnd)
+        (rc,cc) = Tuple(CartesianIndices(size(cl))[j])
+        row_range = max(rc-r,1):min(rc+r, size(cl,1))
+        col_range = max(cc-r,1):min(cc+r,size(cl,2))
+        for CI in CartesianIndices((row_range, col_range))
             if gt[CI]
-                k =  sub2ind(size(gt), CI[1],CI[2])
+                k =  LinearIndices(size(gt))[CI[1],CI[2]]
                 dist = sqrt((CI[1]-rc)^2 +  (CI[2]-cc)^2)
                 if dist <= dmax
                     matchableCL[rc,cc] = true
@@ -67,7 +67,7 @@ function pixel_mapping(cl::AbstractMatrix, gt::AbstractMatrix, dmax)
             end
         end
     end
-    for J in CartesianRange(size(cl))
+    for J in CartesianIndices(size(cl))
         if (matchableCL[J])            
             nCL = nCL +1
             pixToIdxCL[(J[1],J[2])] = nCL
@@ -186,14 +186,21 @@ function evaluate(f::FBoundary, cl_seg::Matrix{T1}, gt_seg::Matrix{T2}) where T1
             end
         end
     end
-
-     cntR = sum(matchG.>0)
-     sumR = length(gt_detected)
-     cntP = sum(matchCL.>0)
-     sumP = length(cl_detected)
-     rec = cntR/sumR;
-     prec = cntP/sumP;
-    return ((2*prec*rec)/(prec+rec), prec, rec)
+    
+    cntR = sum(matchG.>0)
+    sumR = length(gt_detected)
+    cntP = sum(matchCL.>0)
+    sumP = length(cl_detected)
+    rec = cntR/(sumR +  eps());
+    prec = cntP/(sumP + eps());
+    println((cntR, sumR, cntP, sumP, rec, prec))
+    if sumR == 0
+        @warn("Infinit recall")
+    end
+    if sumP == 0
+        @warn("Infinit precision")
+    end
+    return ((2*prec*rec)/(prec+rec + eps()), prec, rec)
 end
 
 function evaluate(d, cl::Matrix{T}, gt::Matrix{T}) where T<:Integer
