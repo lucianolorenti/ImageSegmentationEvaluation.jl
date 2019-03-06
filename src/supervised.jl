@@ -23,6 +23,9 @@ using MLBase
 function evaluate(f, cl_seg::SegmentedImage, gt_seg::SegmentedImage)
     return evaluate(f, labels_map(cl_seg), labels_map(gt_seg))
 end
+function evaluate(f, cl_seg::Matrix{T1}, gt_seg::Matrix{T2}) where T1<:Integer where T2<:Integer
+    return evaluate(f, convert.(Integer, cl_seg), convert.(Integer, gt_seg))
+end
 
 """
 ```
@@ -193,7 +196,6 @@ function evaluate(f::FBoundary, cl_seg::Matrix{T1}, gt_seg::Matrix{T2}) where T1
     sumP = length(cl_detected)
     rec = cntR/(sumR +  eps());
     prec = cntP/(sumP + eps());
-    println((cntR, sumR, cntP, sumP, rec, prec))
     if sumR == 0
         @warn("Infinit recall")
     end
@@ -275,10 +277,10 @@ function I(clusters1::Vector{BitArray{2}}, clusters2::Vector{BitArray{2}})
             
 end
 function evaluate(d::VariationOfInformation, cl::Matrix{T}, gt::Matrix{T}) where T<:Integer
-     ff = varinfo(maximum(cl), vec(cl),maximum(gt),vec(gt))
-     clusters_cl = [(cl.==j) for j in unique(cl)]
-     clusters_gt = [(gt.==j) for j in unique(gt)]
-     voi =  H(clusters_cl) + H(clusters_gt) - 2*I(clusters_cl,clusters_gt)
+    ff = varinfo(maximum(cl), vec(cl), maximum(gt),vec(gt))
+    clusters_cl = [(cl.==j) for j in unique(cl)]
+    clusters_gt = [(gt.==j) for j in unique(gt)]
+    voi =  H(clusters_cl) + H(clusters_gt) - 2*I(clusters_cl,clusters_gt)
     if (d.normalize)
         return voi / 2*log(max(maximum(cl),maximum(gt)))
     else
@@ -310,7 +312,7 @@ It relabels a partition in scanning order. Bimaps are the look up tables of the 
 function relabel(c1::Matrix{T}, bimap=Dict{Integer,Integer}()) where T<:Integer
      partition_out = zeros(Integer, size(c1))
      max_region = 1;
-    for I in CartesianRange(size(c1))
+    for I in CartesianIndices(size(c1))
         if !haskey(bimap, c1[I])
             bimap[c1[I]] = max_region;
             partition_out[I] = max_region;
@@ -333,24 +335,26 @@ function evaluate(d::FMeasureRegions, c1::Matrix{T}, gt::Matrix{T}) where T<:Int
 
 function evaluate(d::FMeasureRegions, c1::Matrix{T}, gt::Matrix{T}) where T<:Integer
 
-    assert(size(c1)==size(gt))
+    @assert(size(c1)==size(gt))
 
     (partition1_relab, num_reg_1) = relabel(c1)
     (partition2_relab, num_reg_2) = relabel(gt)
-     c = Clustering.counts(partition1_relab, partition2_relab,(1:maximum(partition1_relab),1:maximum(partition2_relab))) # form contingency matrix
-
-     n = round(Int,sum(c))
-     nis = sum(sum(c,2).^2)        # sum of squares of sums of rows
-     njs = sum(sum(c,1).^2)        # sum of squares of sums of columns
-     t2 = sum(c.^2)                # sum over rows & columnns of nij^2
-     t3 = .5*(nis+njs)
-     n11 = (t2-n)/2
-     n00 = (n^2 - nis -njs +t2)/2
-     n10 = (nis-t2)/2
-     n01 = (njs-t2)/2
-
-     precision = n11/(n11+n10);
-     recall    = n11/(n11+n01);
+    c = Clustering.counts(partition1_relab,
+                          partition2_relab,
+                          (1:maximum(partition1_relab),
+                           1:maximum(partition2_relab))) # form contingency matrix
+    n = round(Int,sum(c))
+    nis = sum(sum(c, dims=2).^2)        # sum of squares of sums of rows
+    njs = sum(sum(c, dims=1).^2)        # sum of squares of sums of columns
+    t2 = sum(c.^2)                # sum over rows & columnns of nij^2
+    t3 = .5*(nis+njs)
+    n11 = (t2-n)/2
+    n00 = (n^2 - nis -njs +t2)/2
+    n10 = (nis-t2)/2
+    n01 = (njs-t2)/2
+    
+    precision = n11/(n11+n10);
+    recall    = n11/(n11+n01);
     if (precision+recall>0)
         return (2*precision*recall/(precision+recall), precision, recall)
     else
@@ -369,6 +373,12 @@ struct PRObjectsAndParts
     object_threshold::Float64
     part_threshold::Float64
     B::Float64
+    PRObjectsAndParts(;
+                      object_threshold::Float64=0.95,
+                      part_threshold::Float64=0.25,
+                      B::Float64=0.1) = new(object_threshold,
+                                            part_threshold,
+                                            B)
 end
 
 
@@ -520,7 +530,7 @@ struct BoundaryDisplacementError
 end
 using Images
 function evaluate(cfg::BoundaryDisplacementError, cl::Matrix{T}, gt::Matrix{T})  where T<:Integer
-    assert(size(cl)==size(gt))
+    @assert(size(cl)==size(gt))
     # Generate boundary maps
     boundary1 = boundary_map(BoundaryGradient(), cl)
     boundary2 = boundary_map(BoundaryGradient(), gt)

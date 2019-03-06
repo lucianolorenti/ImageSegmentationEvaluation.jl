@@ -55,10 +55,11 @@ function evaluate(c::ECW, image::AbstractArray{Color, N}, segments::SegmentedIma
     E_intra = sum(norm.(image-mean_segments).<  c.threshold)
     C = 1/6
     total_sum = 0
+    bool_map = [segments.image_indexmap .== i for i=1:R]
     for i=1:R-1
-        a = segments.image_indexmap .== i
+        a = bool_map[i]
         for j=i+1:R
-            b = segments.image_indexmap .== j            
+            b = bool_map[j]         
             if (norm(segments_mean[i] - segments_mean[j])  > c.threshold)                
                  Kij = sum((a[1:end-1,1:end] + b[2:end,1:end]).==2)  + sum((a[1:end,1:end-1] + b[1:end,2:end]).==2)
                 total_sum+=Kij                
@@ -298,32 +299,32 @@ function color_std(colors)
 end
 
 function evaluate(c::FRCRGBD,
-                  I::AbstractArray{T},
-                  R::Matrix,
+                  color_image::AbstractArray{T},
+                  range_image::Matrix,
                   seg_image::SegmentedImage) where T<:Colorant
     return evaluate(c,
-                    convert.(Lab, I),
-                    R,
+                    convert.(Lab, color_image),
+                    range_image,
                     labels_map(seg_image))
 end
 function evaluate(c::FRCRGBD,
-                  I::Matrix{L},
-                  R::Matrix,
+                  color_image::Matrix{L},
+                  range_image::Matrix,
                   segments::Matrix{<:Integer}) where L <: Lab
-    I = channelview(I)
+    color_image = channelview(color_image)
     N = size(segments, 1) * size(segments, 2)
     K = 0
     unique_segments = unique(segments)
     params = Dict()
     sigma_w = mapwindow(color_std,
-                        colorview(RGB, I),
+                        colorview(RGB, color_image),
                         (3,3))
 
     for i in unique_segments
         mask = segments .== i
         indices = findall(mask)
-        valsIi = I[:, indices]
-        valsRi = R[indices]
+        valsIi = color_image[:, indices]
+        valsRi = range_image[indices]
         S_star = erode(mask)
         params[i] = Dict(
             :stdI=> std(valsIi),
