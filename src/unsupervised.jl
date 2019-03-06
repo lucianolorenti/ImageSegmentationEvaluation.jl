@@ -126,8 +126,6 @@ function evaluate(c::Zeboudj, image::AbstractArray{Color, M}, segments::Segmente
 
     C = zeros(N)
     for j=1:N
-        println(inside[j])
-        println(outside[j])
         if (inside[j] > 0 ) &&  (inside[j] < outside[j])
             C[j] = 1 - (inside[j]/outside[j])
         elseif (inside[j]==0)
@@ -300,15 +298,19 @@ function color_std(colors)
 end
 
 function evaluate(c::FRCRGBD,
-                  I::Array{T, 3},
+                  I::AbstractArray{T},
                   R::Matrix,
-                  seg_image::SegmentedImage) where T<:Number
-    return evaluate(c, I, R, labels_map(seg_image))
+                  seg_image::SegmentedImage) where T<:Colorant
+    return evaluate(c,
+                    convert.(Lab, I),
+                    R,
+                    labels_map(seg_image))
 end
 function evaluate(c::FRCRGBD,
-                  I::Array{T, 3},
+                  I::Matrix{L},
                   R::Matrix,
-                  segments::Matrix{<:Integer}) where T<:Number
+                  segments::Matrix{<:Integer}) where L <: Lab
+    I = channelview(I)
     N = size(segments, 1) * size(segments, 2)
     K = 0
     unique_segments = unique(segments)

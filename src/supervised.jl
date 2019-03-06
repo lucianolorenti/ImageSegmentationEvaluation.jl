@@ -2,6 +2,7 @@
 using Distances
 using Clustering
 using MatrixNetworks
+using ImageSegmentation
 export
     edge_weight,
     boundary_map,
@@ -17,37 +18,47 @@ export
     thinning
 using MLBase
 
+
+
+function evaluate(f, cl_seg::SegmentedImage, gt_seg::SegmentedImage)
+    return evaluate(f, labels_map(cl_seg), labels_map(gt_seg))
+end
+
 """
 ```
 struct FBoundary
 ```
+
+Learning to Detect Natural Image Boundaries Using Local Brightness, Color, and Texture Cues
+David R. Martin, Member, IEEE, Charless C. Fowlkes, and Jitendra Malik, Member, IEEE
 
 # Members
 - `dmax::Float64`
 """
 struct FBoundary
     dmax::Float64
+    FBoundary(;dmax::Float64=0.0075) = new(dmax)
 end
 
 function pixel_mapping(cl::AbstractMatrix, gt::AbstractMatrix, dmax)
-     pixToIdxCL = Dict{Tuple{Integer,Integer},Integer}()
-     pixToIdxGT = Dict{Tuple{Integer,Integer},Integer}()
-     idxToPixCL = Vector{Tuple{Integer,Integer}}()
-     idxToPixGT = Vector{Tuple{Integer,Integer}}()
-     ee         = Vector() 
-     matchableGT = falses(size(cl))
-     matchableCL = falses(size(cl))
-     nCL = 0
-     nGT = 0
-     r = round(Integer,ceil(dmax))
-    for j in find(cl)
+    pixToIdxCL = Dict{Tuple{Integer,Integer},Integer}()
+    pixToIdxGT = Dict{Tuple{Integer,Integer},Integer}()
+    idxToPixCL = Vector{Tuple{Integer,Integer}}()
+    idxToPixGT = Vector{Tuple{Integer,Integer}}()
+    ee = Vector() 
+    matchableGT = falses(size(cl))
+    matchableCL = falses(size(cl))
+    nCL = 0
+    nGT = 0
+    r = round(Integer,ceil(dmax))
+    for j in findall(cl)
         (rc,cc) = ind2sub(size(cl),j)
-         wInit   = CartesianIndex(max.((rc,cc).-(r,r),(1,1)))        
-         wEnd    = CartesianIndex(min.((rc,cc).+(r,r),size(cl)))
+        wInit   = CartesianIndex(max.((rc,cc).-(r,r),(1,1)))        
+        wEnd    = CartesianIndex(min.((rc,cc).+(r,r),size(cl)))
         for CI in CartesianRange( wInit, wEnd)
             if gt[CI]
-                 k =  sub2ind(size(gt), CI[1],CI[2])
-                 dist = sqrt((CI[1]-rc)^2 +  (CI[2]-cc)^2)
+                k =  sub2ind(size(gt), CI[1],CI[2])
+                dist = sqrt((CI[1]-rc)^2 +  (CI[2]-cc)^2)
                 if dist <= dmax
                     matchableCL[rc,cc] = true
                     matchableGT[CI] = true
@@ -70,15 +81,15 @@ function pixel_mapping(cl::AbstractMatrix, gt::AbstractMatrix, dmax)
     end
     return (pixToIdxCL, idxToPixCL, nCL, matchableCL, pixToIdxGT, idxToPixGT, nGT, matchableGT, ee)
 end
-function evaluate(f::FBoundary, cl_seg::Matrix{T}, gt_seg::Matrix{T}) where T<:Integer
+function evaluate(f::FBoundary, cl_seg::Matrix{T1}, gt_seg::Matrix{T2}) where T1<:Integer where T2<:Integer
 
-     cl = thinning(boundary_map(cl_seg))
-     gt = thinning(boundary_map(gt_seg))
+     cl = thinning(boundary_map(BoundaryGradient(), cl_seg))
+     gt = thinning(boundary_map(BoundaryGradient(), gt_seg))
      scale_cost =  sqrt( size(cl,1)^2 + size(cl,2)^2)
      dmax = f.dmax * scale_cost
      noutliers = 6
-     cl_detected = find(cl)
-     gt_detected = find(gt)
+     cl_detected = findall(cl)
+     gt_detected = findall(gt)
      outlier_weight =-100*f.dmax*scale_cost
 
     (pixToIdxCL, idxToPixCL, nCL, matchableCL, pixToIdxGT, idxToPixGT, nGT, matchableGT, ee) = pixel_mapping(cl, gt, dmax)
