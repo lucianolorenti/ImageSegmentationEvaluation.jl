@@ -1,5 +1,5 @@
 name = "ImageSegmentationEvaluation"
-uuid = "058acaa4-0462-11e9-3333-932cec0d9b8c"
+uuid = "643f3195-0488-53f5-baa0-4208a0de173b"
 authors = ["lucianolorenti <lucianolorenti@gmail.com>"]
 version = "0.1.0"
 
