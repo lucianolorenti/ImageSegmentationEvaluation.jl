@@ -16,10 +16,10 @@ import Base:
     -,
     iterate
 
-(-)(a::Lab{T}, b::Lab{T}) where T =
-    Lab{T}(comp1(a)-comp1(b),
-                                      comp2(a)-comp2(b),
-                                      comp3(a)-comp3(b))
+(-)(a::Lab{T1}, b::Lab{T2}) where T1 where T2 =
+    Lab{T1}(comp1(a)-comp1(b),
+            comp2(a)-comp2(b),
+            comp3(a)-comp3(b))
 
 iterate(a::Lab) = (comp1(a), 1)
 function iterate(a::Lab, i::Integer)

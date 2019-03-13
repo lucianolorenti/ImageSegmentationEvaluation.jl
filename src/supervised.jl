@@ -523,8 +523,6 @@ end
 
 """
 Boundary Displacement Error
-Authors: John Wright, and Allen Y. Yang
-Contact: Allen Y. Yang <yang@eecs.berkeley.edu>
 """
 struct BoundaryDisplacementError
 end
