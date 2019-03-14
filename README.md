@@ -15,8 +15,8 @@
 
 
 References:
-- (SEISM: Supervised Evaluation of
-Image Segmentation Methods)[http://www.vision.ee.ethz.ch/~cvlsegmentation/seism/]
+- [SEISM: Supervised Evaluation of
+Image Segmentation Methods](http://www.vision.ee.ethz.ch/~cvlsegmentation/seism/)
 
 ## Unsupervised metrics
 - ECW 
