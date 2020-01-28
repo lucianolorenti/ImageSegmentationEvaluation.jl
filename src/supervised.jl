@@ -30,21 +30,21 @@ struct FBoundary
 end
 
 function pixel_mapping(cl::AbstractMatrix, gt::AbstractMatrix, dmax)
-     pixToIdxCL = Dict{Tuple{Integer,Integer},Integer}()
-     pixToIdxGT = Dict{Tuple{Integer,Integer},Integer}()
-     idxToPixCL = Vector{Tuple{Integer,Integer}}()
-     idxToPixGT = Vector{Tuple{Integer,Integer}}()
-     ee         = Vector() 
-     matchableGT = falses(size(cl))
-     matchableCL = falses(size(cl))
-     nCL = 0
-     nGT = 0
-     r = round(Integer,ceil(dmax))
-    for j in find(cl)
+    pixToIdxCL = Dict{Tuple{Integer,Integer},Integer}()
+    pixToIdxGT = Dict{Tuple{Integer,Integer},Integer}()
+    idxToPixCL = Vector{Tuple{Integer,Integer}}()
+    idxToPixGT = Vector{Tuple{Integer,Integer}}()
+    ee         = Vector() 
+    matchableGT = falses(size(cl))
+    matchableCL = falses(size(cl))
+    nCL = 0
+    nGT = 0
+    r = round(Integer,ceil(dmax))
+    for j in findall(cl)
         (rc,cc) = ind2sub(size(cl),j)
-         wInit   = CartesianIndex(max.((rc,cc).-(r,r),(1,1)))        
-         wEnd    = CartesianIndex(min.((rc,cc).+(r,r),size(cl)))
-        for CI in CartesianRange( wInit, wEnd)
+        wInit   = CartesianIndex(max.((rc,cc).-(r,r),(1,1)))        
+        wEnd    = CartesianIndex(min.((rc,cc).+(r,r),size(cl)))
+        for CI in CartesianIndices(wInit, wEnd)
             if gt[CI]
                  k =  sub2ind(size(gt), CI[1],CI[2])
                  dist = sqrt((CI[1]-rc)^2 +  (CI[2]-cc)^2)
@@ -56,7 +56,7 @@ function pixel_mapping(cl::AbstractMatrix, gt::AbstractMatrix, dmax)
             end
         end
     end
-    for J in CartesianRange(size(cl))
+    for J in CartesianIndices(size(cl))
         if (matchableCL[J])            
             nCL = nCL +1
             pixToIdxCL[(J[1],J[2])] = nCL
@@ -72,13 +72,13 @@ function pixel_mapping(cl::AbstractMatrix, gt::AbstractMatrix, dmax)
 end
 function evaluate(f::FBoundary, cl_seg::Matrix{T}, gt_seg::Matrix{T}) where T<:Integer
 
-     cl = thinning(boundary_map(cl_seg))
-     gt = thinning(boundary_map(gt_seg))
+     cl = thinning(boundary_map(BoundaryGradient, cl_seg))
+     gt = thinning(boundary_map(BoundaryGradient, gt_seg))
      scale_cost =  sqrt( size(cl,1)^2 + size(cl,2)^2)
      dmax = f.dmax * scale_cost
      noutliers = 6
-     cl_detected = find(cl)
-     gt_detected = find(gt)
+     cl_detected = findall(cl)
+     gt_detected = findall(gt)
      outlier_weight =-100*f.dmax*scale_cost
 
     (pixToIdxCL, idxToPixCL, nCL, matchableCL, pixToIdxGT, idxToPixGT, nGT, matchableGT, ee) = pixel_mapping(cl, gt, dmax)
@@ -257,7 +257,7 @@ function I(clusters1::Vector{BitArray{2}}, clusters2::Vector{BitArray{2}})
             
 end
 function evaluate(d::VariationOfInformation, cl::Matrix{T}, gt::Matrix{T}) where T<:Integer
-     ff = varinfo(maximum(cl), vec(cl),maximum(gt),vec(gt))
+     ff = varinfo(vec(cl), vec(gt))
      clusters_cl = [(cl.==j) for j in unique(cl)]
      clusters_gt = [(gt.==j) for j in unique(gt)]
      voi =  H(clusters_cl) + H(clusters_gt) - 2*I(clusters_cl,clusters_gt)
@@ -292,7 +292,7 @@ It relabels a partition in scanning order. Bimaps are the look up tables of the 
 function relabel(c1::Matrix{T}, bimap=Dict{Integer,Integer}()) where T<:Integer
      partition_out = zeros(Integer, size(c1))
      max_region = 1;
-    for I in CartesianRange(size(c1))
+    for I in CartesianIndices(size(c1))
         if !haskey(bimap, c1[I])
             bimap[c1[I]] = max_region;
             partition_out[I] = max_region;
@@ -314,25 +314,28 @@ function evaluate(d::FMeasureRegions, c1::Matrix{T}, gt::Matrix{T}) where T<:Int
 """
 
 function evaluate(d::FMeasureRegions, c1::Matrix{T}, gt::Matrix{T}) where T<:Integer
-
-    assert(size(c1)==size(gt))
+    if size(c1)!=size(gt)
+        throw(DimensionMismatch("Images size must coincide"))
+    end
 
     (partition1_relab, num_reg_1) = relabel(c1)
     (partition2_relab, num_reg_2) = relabel(gt)
-     c = Clustering.counts(partition1_relab, partition2_relab,(1:maximum(partition1_relab),1:maximum(partition2_relab))) # form contingency matrix
+    c = Clustering.counts(partition1_relab, partition2_relab,
+                          (1:maximum(partition1_relab),
+                          1:maximum(partition2_relab))) # form contingency matrix
 
-     n = round(Int,sum(c))
-     nis = sum(sum(c,2).^2)        # sum of squares of sums of rows
-     njs = sum(sum(c,1).^2)        # sum of squares of sums of columns
-     t2 = sum(c.^2)                # sum over rows & columnns of nij^2
-     t3 = .5*(nis+njs)
-     n11 = (t2-n)/2
-     n00 = (n^2 - nis -njs +t2)/2
-     n10 = (nis-t2)/2
-     n01 = (njs-t2)/2
+    n = round(Int, sum(c))
+    nis = sum(sum(c, dims=2).^2)        # sum of squares of sums of rows
+    njs = sum(sum(c, dims=1).^2)        # sum of squares of sums of columns
+    t2 = sum(c.^2)                # sum over rows & columnns of nij^2
+    t3 = .5*(nis+njs)
+    n11 = (t2-n)/2
+    n00 = (n^2 - nis -njs +t2)/2
+    n10 = (nis-t2)/2
+    n01 = (njs-t2)/2
 
-     precision = n11/(n11+n10);
-     recall    = n11/(n11+n01);
+    precision = n11/(n11+n10);
+    recall    = n11/(n11+n01);
     if (precision+recall>0)
         return (2*precision*recall/(precision+recall), precision, recall)
     else
@@ -502,10 +505,12 @@ struct BoundaryDisplacementError
 end
 using Images
 function evaluate(cfg::BoundaryDisplacementError, cl::Matrix{T}, gt::Matrix{T})  where T<:Integer
-    assert(size(cl)==size(gt))
+    if size(cl)!=size(gt)
+        throw(DimensionMismatch("Images size must coincide"))
+    end
     # Generate boundary maps
-    boundary1 = boundary_map(BoundaryGradient(), cl)
-    boundary2 = boundary_map(BoundaryGradient(), gt)
+    boundary1 = boundary_map(BoundaryGradient, cl)
+    boundary2 = boundary_map(BoundaryGradient, gt)
     
     # boundary1 and boundary2 are now binary boundary masks. compute their distance transforms:
     D1 = distance_transform(feature_transform(boundary1));

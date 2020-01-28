@@ -31,7 +31,7 @@ end
 struct BoundaryGradient
 end
 
-function boundary_map(b::BoundaryGradient, img::Matrix)
+function boundary_map(b::Type{BoundaryGradient}, img::Matrix)
     (nr, nc) = size(img)
     gradX = zeros(size(img))
     for c = 2:nc-1
@@ -58,7 +58,7 @@ function boundary_map(seg::Matrix{T}) where T<:Integer
 From a segmentation, compute a binary boundary map with 1 pixel wide  boundaries. 
 The boundary pixels are offset by 1/2 pixel towards the origin from the actual segment boundary.
 """
-function boundary_map(cfg::BoundaryShift, seg::Matrix{T}) where T<:Integer
+function boundary_map(cfg::Type{BoundaryShift}, seg::Matrix{T}) where T<:Integer
     (h,w) = size(seg)
 
     local ee = zeros(size(seg));
@@ -79,7 +79,7 @@ end
 
 struct BoundaryMooreTracing
 end
-function boundary_map(cfg::BoundaryMooreTracing, binary::Matrix)
+function boundary_map(cfg::Type{BoundaryMooreTracing}, binary::Matrix)
 
     # Pad the input image with a 1-px border.
     ( rows, columns ) = size( binary );

@@ -1,8 +1,11 @@
 using Documenter, ImageSegmentationEvaluation
 
 makedocs(
-  format = :html,
+    modules=[ImageSegmentationEvaluation],
+    format = Documenter.HTML(prettyurls = true),
     sitename = "Image Segmentation Evaluation",
+    source = "src",
+    clean=false,
     pages = [
         "Index"=> "index.md",
         "Subsection" => [
@@ -10,5 +13,12 @@ makedocs(
             "Unsupervised methods" => "unsupervised.md"
         ]
     ]
+)
+
+deploydocs(
+    repo = "github.com/lucianolorenti/SpectralClustering.jl.git",
+    deps = nothing,
+    make = nothing,
+    target = "build"
 )
 

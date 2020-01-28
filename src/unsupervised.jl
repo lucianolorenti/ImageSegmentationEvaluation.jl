@@ -80,13 +80,13 @@ function evaluate(c::Zeboudj, image::Matrix{T1}, segments::Matrix{T}) where T<:I
     border_lengths = zeros(N)
     I1, Iend = first(R), last(R)
     W = CartesianIndex(r,r)
-    for I in CartesianRange(size(image))
+    for I in CartesianIndices(size(image))
         current_label = segments[I]
         segment_sizes[curret_label]+=1
         max_inside = -1
         max_outside = -1
         is_a_border_point = false
-        for J in CartesianRange(max(I1, I-W), min(Iend, I+W))
+        for J in CartesianIndices(max(I1, I-W), min(Iend, I+W))
             if current_label != segments[J]
                 is_a_border_point = true
                 max_outside = max(maxOutside, image[J])
@@ -247,10 +247,10 @@ struct ErdemMethod
     L::Integer # Length of the normal line
 end
 function mean_value(img::Matrix{T}, pos, w) where T
-    R = CartesianRange(size(img))
+    R = CartesianIndices(size(img))
     I, L = first(R), last(R)
     sum = zeros(T)
-    range = CartesianRange(max(I, pos-w), min(L, pos+w))
+    range = CartesianIndices(max(I, pos-w), min(L, pos+w))
     for N in  range
         sum += img[N]
     end
@@ -315,7 +315,9 @@ function evaluate(c::FRCRGBD,
             :sigma_t=>sum(sigma_w[findall(S_star)])/sum(S_star), 
             :n_s_star=>sum(S_star) 
         )
+        println(params[i])
     end
+
     DIntraI = 0
     DInterI = 0
     DIntraD = 0
@@ -334,6 +336,14 @@ function evaluate(c::FRCRGBD,
         else
             @warn("Segment to small")
         end
+    end
+ 
+    if !all( isfinite.([DIntraI, DInterI, DIntraD, DInterD]))
+        println(DIntraI)
+        println(DInterI)
+        println(DIntraD)
+        println(DInterD)
+        throw("Inf")
     end
     DInterI = DInterI / (K*(K-1))
     DInterD = DInterD / (K*(K-1))

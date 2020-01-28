@@ -1,4 +1,4 @@
-# Supervised methods
+p# Supervised methods
 ## Introduction
 In order to use the supervised evaluation method you have to have a ground truth. 
 
@@ -18,9 +18,9 @@ Pages   = ["supervised.jl"]
 ```@example supervised
 using TestImages, ImageSegmentation, Plots, Colors,  Images, ImageSegmentationEvaluation
 using Plots
-pyplot()
-function get_random_color(seed)
-    srand(seed)
+using Random
+function get_random_color(seed::Integer)
+    Random.seed!(seed*1000)
     rand(RGB{N0f8})
 end
 
